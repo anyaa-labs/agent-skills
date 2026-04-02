@@ -1,9 +1,9 @@
 ---
 name: agent-architect
-version: 0.1.0
+version: 0.2.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 6-dimension scoring), REVIEW
+  design. Three modes: AUDIT (full system evaluation with 7-dimension scoring), REVIEW
   (focused prompt/skill teardown), DESIGN (architect a new agent system from scratch).
   Incorporates 10 lessons from Anthropic's engineering blog and 10 patterns from
   production skill systems. Use when asked to "review my agent", "evaluate my prompts",
@@ -68,7 +68,19 @@ Before asking any questions, read the codebase to understand what exists.
    - How many agents exist? What are their roles?
    - How do they communicate? (direct calls, message queue, shared state, structured handoff)
    - What tools does each agent have access to?
-   - What model(s) are used?
+   - What model(s) are used? (see step 2.5 for detailed detection)
+
+2.5. **Detect models used (silent — no user interaction):**
+   - Search for model identifiers in code, config, and env files
+   - Grep for: `claude`, `gpt`, `gemini`, `llama`, `mistral`, `deepseek`, `command-r`, `cohere`, `qwen`, `yi-`
+   - Also check: SDK client constructors, model config objects, API endpoint URLs
+   - Extract specific version strings where possible (e.g., `gpt-4.1`, not just `gpt`)
+   - For each detected model, silently resolve knowledge status:
+     a. Check `model-profiles.md` (shipped with this skill) → KNOWN
+     b. Check `~/.agent-skills/local/agent-architect/model-research/{slug}.md` → CACHED (note date) or STALE (>90 days)
+     c. If neither → UNKNOWN (handled in AUDIT Phase 2, not here)
+   - Read the applicable profile for KNOWN and CACHED models
+   - **Do NOT ask the user anything here.** Phase 0 is silent.
 
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
@@ -86,13 +98,17 @@ Before asking any questions, read the codebase to understand what exists.
 SYSTEM MAP
 ══════════════════════════════════════════
 Agents found: N
-  [name] — [role] — [tools: N] — [prompt: ~N tokens]
+  [name] — [role] — [tools: N] — [prompt: ~N tokens] — [model]
   ...
+
+Models detected: [model1 (version), model2 (version), ...]
+  [model] — profile: KNOWN / CACHED (date) / STALE (date) / UNKNOWN — used by: [agent(s)]
+Model awareness: [all known / N cached / N unknown]
 
 Orchestration: [single-agent / router / parallel / pipeline / none]
 Eval infrastructure: [present / partial / absent]
 Tool count: N tools across M agents
-Estimated cost per invocation: ~$X.XX
+Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
 
 Initial assessment: [1-2 sentences on what stands out]
 ══════════════════════════════════════════
@@ -109,7 +125,7 @@ MODE SELECTION — What kind of help do you need?
 
 | Mode   | When to use                                    | What you get                                    |
 |--------|------------------------------------------------|-------------------------------------------------|
-| AUDIT  | Existing agent system, want a full evaluation  | 6-dimension scored report, prioritized fixes     |
+| AUDIT  | Existing agent system, want a full evaluation  | 7-dimension scored report, prioritized fixes     |
 | REVIEW | Specific prompt or skill file to evaluate      | Focused teardown with line-by-line findings      |
 | DESIGN | Building a new agent system from scratch        | Structured design session with architecture out  |
 ```
@@ -151,6 +167,8 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 12. **The Evaluation Asymmetry** — It is 10x easier to evaluate output than to generate it. Build cheap, fast evaluators that run on every output. The eval pipeline is more important than the agent itself.
 
+13. **Model-Prompt Fit** — A prompt optimized for one model may actively harm another. XML tags help Claude but waste tokens on GPT. Few-shot helps GPT-4.1 but degrades DeepSeek R1. System prompts are critical for Claude but should be avoided entirely for DeepSeek R1. When you see a prompt, ask: was this written for the model that will run it?
+
 ---
 
 ## AUDIT Mode
@@ -169,6 +187,16 @@ Based on Phase 0 findings, ask at most 3 clarifying questions, **ONE AT A TIME**
 - What is the monthly cost or invocation volume?
 - What changed in the last model upgrade? Did you re-evaluate any harness components?
 
+**Unknown model handling (counts toward the 3-question limit):**
+If any models were marked UNKNOWN in Phase 0, ask via AskUserQuestion:
+"I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
+Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
+RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
+
+If user chooses A, use WebSearch to research the model (see Unknown Model Protocol below) before proceeding to Phase 3.
+
+If any models were marked STALE (cached profile >90 days old), briefly note: "Profile for [model] was researched on [date]. It may be outdated but I'll use it. Let me know if you want me to refresh it."
+
 **Rules:**
 - If Phase 0 gives you enough to proceed, ask ZERO questions. Do not ask for the sake of asking.
 - Each question must have a RECOMMENDATION with your best guess based on code reading.
@@ -176,7 +204,7 @@ Based on Phase 0 findings, ask at most 3 clarifying questions, **ONE AT A TIME**
 
 ### AUDIT Phase 3: Deep Evaluation
 
-Apply all 6 evaluation checklists. For each dimension, read the corresponding checklist file, apply it against the codebase, and produce scored findings.
+Apply all 7 evaluation checklists. For each dimension, read the corresponding checklist file, apply it against the codebase, and produce scored findings.
 
 **Read each checklist file before applying it:**
 1. Read `checklists/prompt-architecture.md` — apply against all system prompts and agent instructions
@@ -185,6 +213,7 @@ Apply all 6 evaluation checklists. For each dimension, read the corresponding ch
 4. Read `checklists/multi-agent.md` — apply against orchestration code, agent communication, and routing
 5. Read `checklists/eval-infrastructure.md` — apply against eval scripts, test suites, and CI config
 6. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
+7. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-6.
 
 **If a checklist file cannot be read, STOP and report the error.** Do not proceed without the checklist.
 
@@ -195,6 +224,23 @@ Apply all 6 evaluation checklists. For each dimension, read the corresponding ch
   Current: "the problematic text or code"
   Fix: "the recommended replacement or action"
   Why: one sentence connecting to a named cognitive pattern or Anthropic lesson
+```
+
+**For model-specific findings, add a model tag:**
+
+```
+[SEVERITY] (confidence: N/10) file:line — description [MODEL: gpt-4o]
+  Current: "the problematic text or code"
+  Fix: "the recommended replacement or action"
+  Why: one sentence connecting to model profile + named cognitive pattern
+```
+
+**For precedence overrides** (model-specific finding suppresses a generic one):
+
+```
+[OVERRIDE] prompt-architecture 2.5 suppressed — [MODEL: deepseek-r1]
+  Generic finding: "No few-shot examples for complex output"
+  Model-specific: "Few-shot correctly omitted — R1 performance degrades with examples"
 ```
 
 **Severity levels:**
@@ -265,8 +311,9 @@ Score each dimension 1-10 using the rubric below.
 | Multi-Agent Orch. | 1.0x | Clear specialist roles, dedup, adversarial review, handoff contracts, single-agent fallback | Multiple agents with unclear boundaries. No dedup. | Agents talk past each other. Or: single agent doing everything when specialization is needed. |
 | Eval Infrastructure | 1.0x | Generator-evaluator separated, concrete rubrics, regression suite, cost tracking | Manual testing only. "We run it and check." | No evaluation of any kind. |
 | Production Readiness | 1.5x | Graceful degradation, cost alerts, rate limiting, observability, helpful errors | Happy path works. Failures produce 500 errors. Basic logging. | Demo-quality only. Breaks on first real user. |
+| Model Awareness | 1.0x | Correct model for each role, model-specific prompt patterns, structured output enforcement, known failure modes mitigated, harness components marked for model-upgrade review | Using models but no model-specific optimization. Generic prompts applied to all models. | Wrong model for role, no structured output enforcement, known failure modes unmitigated, prompt format mismatched to model. |
 
-**Overall Maturity Score:** Weighted average (Prompt Architecture and Production Readiness count 1.5x).
+**Overall Maturity Score:** Weighted average (Prompt Architecture and Production Readiness count 1.5x, all others 1.0x).
 
 **Maturity Levels:**
 - **8.0-10.0:** Production-grade. Ship it.
@@ -294,6 +341,7 @@ Score each dimension 1-10 using the rubric below.
 | 4. Multi-Agent Orch.       | N/10  | [1-line summary]              |
 | 5. Eval Infrastructure     | N/10  | [1-line summary]              |
 | 6. Production Readiness    | N/10  | [1-line summary]              |
+| 7. Model Awareness         | N/10  | [1-line summary]              |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -325,13 +373,14 @@ Focused teardown of a specific prompt, skill file, or tool definition. 3 phases.
 
 1. Read the target file(s) the user specified
 2. Classify each artifact:
-   - **System prompt** → apply prompt-architecture checklist
-   - **Tool definition / function schema** → apply tool-design checklist
-   - **Skill file (SKILL.md or similar)** → apply prompt-architecture + tool-design checklists
-   - **Agent harness code** → apply context-management + production-readiness checklists
+   - **System prompt** → apply prompt-architecture + model-awareness checklists
+   - **Tool definition / function schema** → apply tool-design + model-awareness checklists
+   - **Skill file (SKILL.md or similar)** → apply prompt-architecture + tool-design + model-awareness checklists
+   - **Agent harness code** → apply context-management + production-readiness + model-awareness checklists
    - **Orchestration code** → apply multi-agent checklist
    - **Eval code** → apply eval-infrastructure checklist
-3. Count tokens, identify structural patterns, note what stands out
+3. If a target model is detectable (from the file, its imports, or surrounding code), read `model-profiles.md` for the relevant profile. If the target model is not detectable, note: "Target model unknown — model-awareness findings have reduced confidence."
+4. Count tokens, identify structural patterns, note what stands out
 
 ### REVIEW Phase 2: Line-by-Line Teardown
 
@@ -391,6 +440,8 @@ Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION b
 
 5. **What is the volume?** 10/day (prototype) vs. 10K/day (production) vs. 10M/day (scale)?
 
+6. **What model(s) are you planning to use?** Or: are you open to model recommendations? (Read `model-profiles.md` to inform your recommendation based on the use case.)
+
 **Smart-skip:** If the user's initial description already answers a question, skip it. Only ask questions whose answers are not yet clear.
 
 ### DESIGN Phase 2: Architecture Proposal
@@ -405,6 +456,14 @@ Approach A: [Simplest — start here]
   Handles: [what it covers]
   Breaks when: [specific failure modes]
   Cost estimate: ~$X.XX per invocation
+
+  Model selection:
+    [role]: [model] — reason: [why this model for this role]
+
+  Model-specific design choices:
+    - [prompt format chosen because model X prefers it]
+    - [structured output enforcement enabled because model X needs it]
+    - [error handling strategy chosen because model X has failure mode Y]
 
 Approach B: [Only if A demonstrably fails]
   [description + ASCII diagram]
@@ -451,6 +510,51 @@ IMPLEMENTATION CHECKLIST
 Estimated total effort: [human team: X days] → [with AI coding: Y hours]
 ═══════════════════════════════════════
 ```
+
+---
+
+## Unknown Model Protocol
+
+When a model is detected in the codebase but NOT found in shipped `model-profiles.md`:
+
+### Step 1: Check local cache
+Check `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`
+- If exists and `researched_date` < 90 days old → use it, mark as CACHED in System Map
+- If exists and `researched_date` >= 90 days old → use it but mark as STALE in System Map
+- If not exists → proceed to Step 2
+
+### Step 2: Ask user (during AUDIT Phase 2 or REVIEW Phase 1)
+Via AskUserQuestion: "I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
+Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
+RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
+
+### Step 3: Research (if user says yes)
+Use WebSearch to find:
+- Structured output reliability and enforcement mechanisms
+- Tool/function calling support (native? parallel? format?)
+- System prompt adherence (strong? weak? avoid system prompt?)
+- Context window (raw size AND effective reliable range)
+- Known failure modes for agent use cases
+- Recommended prompt patterns (XML? markdown? zero-shot? few-shot?)
+- Major version behavioral differences
+- Approximate cost tier ($$$$, $$$, $$, or $)
+
+### Step 4: Save locally
+Create `~/.agent-skills/local/agent-architect/model-research/` directory if it doesn't exist.
+Write findings to `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md` with frontmatter:
+```yaml
+---
+model: [model name]
+provider: [provider name]
+researched_date: [YYYY-MM-DD]
+source: web-search
+confidence_note: Based on web research, not production-verified
+---
+```
+Use the same profile structure as `model-profiles.md` (strengths, failure modes, prompt patterns, harness requirements, anti-patterns, version-specific notes).
+
+### Step 5: Apply to evaluation
+Use the researched profile for the current evaluation. All findings derived from this profile get a confidence caveat: "Based on web research ([date]), not production-verified profile."
 
 ---
 
