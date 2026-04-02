@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# agent-skills setup — register all skills with Claude Code
+set -e
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILLS_DIR="$HOME/.claude/skills"
+
+mkdir -p "$SKILLS_DIR"
+
+installed=0
+for skill_dir in "$REPO_DIR"/*/; do
+  [ -f "$skill_dir/SKILL.md" ] || continue
+  skill_name="$(basename "$skill_dir")"
+  ln -snf "$skill_dir" "$SKILLS_DIR/$skill_name"
+  echo "  ✓ /$skill_name"
+  installed=$((installed + 1))
+done
+
+if [ "$installed" -eq 0 ]; then
+  echo "No skills found (no */SKILL.md directories)." >&2
+  exit 1
+fi
+
+echo ""
+echo "Installed $installed skill(s) to $SKILLS_DIR"
+echo "Usage: type /<skill-name> in any Claude Code session."
