@@ -12,10 +12,14 @@ When a finding from this checklist contradicts a finding from another checklist,
 
 **Examples of precedence overrides:**
 - `prompt-architecture.md 2.5` flags "no few-shot examples" → but DeepSeek R1 profile says few-shot degrades performance → **suppress 2.5**, report: "Few-shot correctly omitted — R1 performance degrades with examples."
-- `prompt-architecture.md 1.4` flags ">8K tokens" as critical → but Gemini Flash handles 1M reliably → **downgrade to Minor** or suppress, note: "8K threshold does not apply to Gemini Flash (effective range: 1M+)."
+- `prompt-architecture.md 1.2` flags "no stop conditions" → but DeepSeek R1 is used only for single-turn reasoning (no agentic loops) → **downgrade to Minor**, note: "Stop conditions less critical for single-turn R1 usage."
+
+Note: the 8K token threshold (prompt-architecture 1.4) is about prompt *quality* and instruction dilution, NOT about whether the prompt fits in the context window. A bloated 15K prompt is still a quality problem even on Gemini Flash with 1M context. Do NOT suppress prompt-architecture 1.4 based on context window size.
 - `prompt-architecture.md 1.2` flags "no stop conditions" → this is model-independent → **no override**, finding stands.
 
 **Rule of thumb:** Override generic findings only when the model profile provides specific, contradictory guidance. If the model profile is silent on a topic, the generic checklist applies.
+
+**Multi-model artifacts:** When a single prompt/artifact serves multiple models (e.g., Claude primary + GPT fallback), evaluate against the **primary model** — the one that handles the majority of traffic. Report secondary model incompatibilities as separate findings with reduced severity (IMPORTANT, not CRITICAL), noting: "This prompt is optimized for [primary model]. When falling back to [secondary model], [specific issue] will occur. Consider model-specific prompt variants for the fallback path."
 
 ## Dedup Rule
 
@@ -47,7 +51,9 @@ The model supports constrained decoding or strict schema mode, but the system do
 
 **What to look for:**
 - GPT models without `strict: true` on tool definitions
-- Claude without constrained decoding enabled (`response_format`)
+- Claude without constrained decoding or structured output enforcement (tool use with schema, `response_format`, or XML prefill/template strategies)
+- Gemini without `response_schema` or structured output mode enabled
+- DeepSeek V3/V3.1 without explicit schema inspection prompts (raises accuracy from ~53% to ~88%)
 - Llama without external grammar constraints (llama.cpp, vLLM, Outlines)
 - Mistral without explicit "output JSON" instruction in prompt (required even with JSON mode)
 - Command R+ without explicit "Generate a JSON" instruction (infinite loop risk)

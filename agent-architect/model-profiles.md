@@ -1,5 +1,7 @@
 # Model Profiles for Agent Architecture Evaluation
 
+> **Provenance:** Researched 2026-04-02. Sources: Anthropic engineering blog, OpenAI GPT-4.1 prompting guide, Berkeley Function Calling Leaderboard V4, Chroma context rot study, Google Gemini tooling docs, DeepSeek API docs, Mistral function calling docs, Cohere structured outputs docs. See CHANGELOG.md for update history. These profiles describe *behavioral patterns* (stable for months) — for version-specific feature support or current pricing, use WebSearch.
+
 ## How to Use
 
 During Phase 0, detect which models the codebase uses. Look up each model's profile here. Apply model-specific flags during checklist evaluation.
@@ -7,6 +9,17 @@ During Phase 0, detect which models the codebase uses. Look up each model's prof
 **Precedence rule:** When a model profile contradicts a generic checklist item, the model-specific guidance takes precedence. Suppress the generic finding and report the model-aware finding instead.
 
 **Version matching:** Detect the specific version string (e.g., `gpt-4.1`). Match to the closest version in the family profile. If only the family is known, apply family-wide patterns and flag: "Applying [family] profile. Exact version behavior may differ."
+
+**API ID to family mapping:** Model strings in code (API IDs) often differ from marketing names. Match by prefix/substring to family:
+- `claude-*`, `anthropic.*` → Claude family
+- `gpt-*`, `o1-*`, `o3-*` → GPT family
+- `gemini-*` → Gemini family
+- `llama-*`, `meta-llama/*` → Llama family
+- `mistral-*`, `open-mistral-*` → Mistral family
+- `deepseek-chat`, `deepseek-reasoner`, `deepseek-*` → DeepSeek family (`-reasoner` → R1 profile, `-chat` → V3/V3.1 profile)
+- `command-r*`, `cohere.*` → Command R+ family
+
+If an API ID matches a family but not a specific version in the profile, apply family-wide patterns and note the uncertainty. Do NOT treat it as UNKNOWN — it belongs to a known family.
 
 **Cost tiers** (approximate, for offline estimation — do NOT treat as current pricing):
 - **$$$$** — Premium frontier (Opus, GPT-4.5, Gemini Ultra): ~$15-75/M input tokens
