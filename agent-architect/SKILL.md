@@ -187,13 +187,13 @@ Based on Phase 0 findings, ask at most 3 clarifying questions, **ONE AT A TIME**
 - What is the monthly cost or invocation volume?
 - What changed in the last model upgrade? Did you re-evaluate any harness components?
 
-**Unknown model handling (counts toward the 3-question limit):**
-If any models were marked UNKNOWN in Phase 0, ask via AskUserQuestion:
-"I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
-Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
+**Unknown model handling (counts as ONE question toward the 3-question limit, regardless of how many unknowns):**
+If any models were marked UNKNOWN in Phase 0, ask via a single AskUserQuestion that lists all unknown models:
+"I found [model1], [model2], ... in your codebase but don't have profiles for them. Want me to do a web search to learn about their agent-relevant characteristics?"
+Options: A) Yes, research all of them  B) Skip — evaluate without model-specific checks
 RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
 
-If user chooses A, use WebSearch to research the model (see Unknown Model Protocol below) before proceeding to Phase 3.
+If user chooses A, use WebSearch to research each unknown model (see Unknown Model Protocol below) before proceeding to Phase 3. Batch all unknowns into this single question — do NOT ask per model.
 
 If any models were marked STALE (cached profile >90 days old), briefly note: "Profile for [model] was researched on [date]. It may be outdated but I'll use it. Let me know if you want me to refresh it."
 
