@@ -12,16 +12,21 @@ Tool description is missing or a single generic sentence like "Updates the recor
 ### 1.2 Full-Record Returns
 Tool returns entire database records (20+ fields) when the agent only needs 2-3 fields to make its decision. Every extra field burns tokens and confuses reasoning. Tool responses should contain only fields that change the agent's next action.
 
-### 1.3 No Error Response Format
-Tool has no defined error response. The agent cannot distinguish success from failure, leading to silent errors or hallucinated recovery.
+### 1.3 No Error Response Format / Error Messages Don't Guide Self-Correction
+Tool has no defined error response, or error responses do not guide the agent toward self-correction. The agent cannot distinguish success from failure, leading to silent errors, hallucinated recovery, or blind retries with the same bad input.
 
-**What to look for:** Error responses that include (a) what went wrong, (b) whether the agent should retry, and (c) any recovery hints.
+**What to look for:** Error responses that include (a) what went wrong in terms the agent can act on, (b) whether the agent should retry, (c) recovery hints with the correct format or valid values. Compare: `"400 Bad Request"` (agent retries blindly) vs `"Expected ISO date YYYY-MM-DD, got '12/25/2025'. Use YYYY-MM-DD format."` (agent self-corrects). If the error message does not change what the agent does next, it is useless.
 
 ### 1.4 Misleading Tool Name
 Tool name implies a different action than what the tool actually does. `update_user` that also deletes related records, or `get_status` that mutates state.
 
 ### 1.5 Unsandboxed Code Execution
 `execute_sql`, `run_code`, `eval`, or similar tools exposed without sandboxing, input validation, or scope constraints. The agent can execute arbitrary operations.
+
+### 1.6 Tool I/O Mismatched to Agent Decision
+The tool's input/output shape does not match the agent's actual decision. The agent must hold intermediate state, reconstruct full objects, or do cognitive work that the tool layer should handle.
+
+**What to look for:** (a) Tool requires a complete object when the agent only wants to change one field (e.g., `update_slot(full_slot_dict)` when the agent just wants to swap a dish — should be `swap_dish_in_slot(date, slot, old_dish, new_dish)`). (b) Tool returns raw data the agent must transform before acting on it. (c) Agent needs multiple tool calls for what is conceptually one decision. The test: describe what the agent is deciding in one sentence, then check if the tool call matches that sentence.
 
 ## Pass 2 — Important
 
