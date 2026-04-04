@@ -5,13 +5,16 @@ description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 7-dimension scoring and
   cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
-  (architect a new agent system from scratch). Persists evaluation history to track
+  (architecture thinking partner — new systems, existing system evolution, and
+  focused design questions). Persists evaluation history to track
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
   new agent files, or skill version updates. Incorporates 10 lessons from Anthropic's
   engineering blog and 13 cognitive patterns from production agent systems. Use when
   asked to "review my agent", "evaluate my prompts", "audit my multi-agent system",
-  "design an agent", or "is my agent architecture good". Proactively invoke when the
+  "design an agent", "evolve my agent", "should I add", "which model for",
+  "brainstorm", "help me think through", or "is my agent architecture good".
+  Proactively invoke when the
   user shows agent code, prompt files, tool definitions, or multi-agent orchestration
   and asks for feedback. (agent-skills)
 allowed-tools:
@@ -187,17 +190,18 @@ After presenting the System Map, determine the mode automatically:
 
 - User provides a specific file or says "review this prompt" / "check my skill" → **REVIEW**
 - User says "design" / "build" / "new agent" / "from scratch" / codebase has no agents → **DESIGN**
-- All other cases → **AUDIT** (default for existing agent systems)
+- User asks a design question about their system ("should I", "how should I", "which model", "help me think through", "brainstorm", "trade-offs", "what if I", "evolve", "restructure", "add an agent", "split this into") → **DESIGN**
+- All other cases (or user says "evaluate" / "audit" / "how good is my system") → **AUDIT** (default)
 
 Do not ask the user to select a mode. The auto-select rules cover all cases.
 
 **Mode reference:**
 
-| Mode   | When to use                                    | What you get                                    |
-|--------|------------------------------------------------|-------------------------------------------------|
-| AUDIT  | Existing agent system, want a full evaluation  | 7-dimension scored report, prioritized fixes     |
-| REVIEW | Specific prompt or skill file to evaluate      | Focused teardown with line-by-line findings      |
-| DESIGN | Building a new agent system from scratch        | Structured design session with architecture out  |
+| Mode   | When to use                                              | What you get                                    |
+|--------|----------------------------------------------------------|-------------------------------------------------|
+| AUDIT  | Existing agent system, want a full evaluation            | 7-dimension scored report, prioritized fixes     |
+| REVIEW | Specific prompt or skill file to evaluate                | Focused teardown with line-by-line findings      |
+| DESIGN | Architecture questions — new system, evolving existing, or focused design topic | Design conversation with concrete recommendations |
 
 ---
 
@@ -545,9 +549,22 @@ Dimensions not evaluated show: "N/A — not in scope for REVIEW mode"
 
 ## DESIGN Mode
 
-Help architect a new agent system from scratch. 4 phases.
+Architecture thinking partner — new systems, existing system evolution, and focused design questions.
 
-### DESIGN Phase 1: Problem Understanding
+### Context Assessment
+
+Phase 0 has already run. Determine your approach based on Phase 0 findings + the user's request:
+
+**A) Greenfield** — Phase 0 found no agents, or user explicitly wants to build something new.
+→ Proceed to DESIGN Phase 1 (Problem Understanding) below.
+
+**B) Existing system, broad exploration** — Phase 0 found agents, user wants to think through changes but hasn't asked a specific question ("brainstorm my architecture", "help me evolve this system").
+→ Skip Phase 1. Use the System Map as your foundation. Present 2-3 of the most relevant design topics based on Phase 0 findings and any evaluation history. For each, state what you observe and ask the user which they want to explore. Then enter the Design Conversation Loop.
+
+**C) Existing system, focused question** — Phase 0 found agents, user asked something specific ("should I add a second agent?", "which model for my router?").
+→ Skip Phase 1. Answer the question directly using the Design Conversation Loop guidelines. If the question requires constraints you can't infer from Phase 0, ask up to 2 clarifying questions first (via AskUserQuestion, ONE AT A TIME), then answer.
+
+### DESIGN Phase 1: Problem Understanding (greenfield path)
 
 Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION based on what you know so far.
 
@@ -632,6 +649,38 @@ Estimated total effort: [human team: X days] → [with AI coding: Y hours]
 ═══════════════════════════════════════
 ```
 
+### Design Conversation Loop (for paths B and C)
+
+When working with an existing system, operate as a thinking partner, not an evaluator:
+
+**Questioning policy:** Ask only what Phase 0 can't answer. For focused questions (path C), ask at most 2 clarifying questions before giving a concrete answer. For broad exploration (path B), present observations and let the user steer.
+
+**How to respond:**
+1. Ground every recommendation in Phase 0 findings — reference specific files, agent count, token sizes, cost estimates, detected models.
+2. Apply the Iron Law: if recommending complexity, demonstrate the concrete failure case where the simpler version breaks. If the simpler version doesn't demonstrably fail, say so.
+3. Reference evaluation history when available — "Your eval infrastructure scored 3/10 last audit. Before adding complexity, consider measuring what you have."
+4. For model questions, read `model-profiles.md`. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
+5. End each response with a follow-up question or decision prompt. The user can switch topics freely.
+6. Every recommendation must be concrete: not "it depends" but "if X, do Y; if Z, do W."
+
+**Design topics:** Agent topology, model selection, tool design, context strategy, evaluation approach, cost optimization, failure handling, harness lifecycle. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`.
+
+**Decision Log** — When the conversation produces 3+ concrete decisions, offer to produce a summary:
+```
+DECISION LOG: [system name]
+══════════════════════════════════════════
+1. [Decision] — rationale: [why] — revisit when: [trigger]
+2. ...
+
+OPEN QUESTIONS:
+1. [Unresolved] — next step: [action]
+
+NEXT STEPS:
+1. [Concrete action] — effort: S/M/L
+══════════════════════════════════════════
+```
+The Decision Log is a session artifact (not persisted to disk). Offer it, do not produce it unsolicited for single focused questions.
+
 ---
 
 ## Unknown Model Protocol
@@ -644,7 +693,7 @@ Check `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`
 - If exists and `researched_date` >= 90 days old → use it but mark as STALE in System Map
 - If not exists → proceed to Step 2
 
-### Step 2: Ask user (during AUDIT Phase 2 or REVIEW Phase 1)
+### Step 2: Ask user (during AUDIT Phase 2, REVIEW Phase 1, or DESIGN Context Assessment)
 Via AskUserQuestion: "I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
 Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
 RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
@@ -685,7 +734,9 @@ Use the researched profile for the current evaluation. All findings derived from
 - All applicable checklists are applied and scored (AUDIT mode)
 - Cached evaluation is presented and user does not request re-evaluation (AUDIT mode, cached path)
 - Line-by-line teardown of all target files is complete (REVIEW mode)
-- Architecture proposal and implementation checklist are produced (DESIGN mode)
+- Architecture proposal and implementation checklist are produced (DESIGN mode, greenfield path)
+- The user's design question is answered with a concrete recommendation (DESIGN mode, focused question path)
+- The user indicates they're done exploring and Decision Log is offered if 3+ decisions were made (DESIGN mode, broad exploration path)
 - The user says "stop", "enough", or "skip the rest"
 - The system is not an agent system (no LLM in the critical path) — say so and stop
 
@@ -696,6 +747,8 @@ Use the researched profile for the current evaluation. All findings derived from
 - The completion summary (AUDIT) or review summary (REVIEW). Always produce the structured output.
 - Confidence scores on every finding. No finding without a score.
 - Phase 4.5 persistence (AUDIT mode, fresh evaluation only). Save the evaluation to disk after every fresh audit.
+- A concrete recommendation with tradeoffs for every design question raised (DESIGN). No "it depends" without "if X, do Y; if Z, do W."
+- A cost estimate for any proposed architecture change (DESIGN, existing system paths). Even rough: "adding a second agent roughly doubles your per-invocation cost."
 
 ---
 
