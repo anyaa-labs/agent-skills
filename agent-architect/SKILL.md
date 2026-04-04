@@ -129,6 +129,7 @@ Before asking any questions, read the codebase to understand what exists.
      b. Extract overall maturity score, dimension scores, git commit hash, skill version, and agent files list
      c. Determine if re-evaluation is needed — **re-evaluate** if ANY of these are true:
         - `git_commit` differs from current HEAD (code changed)
+        - Agent files have uncommitted changes (dirty working tree — check `git status` for modified/staged agent files)
         - `agent_files` list differs from files discovered in step 1 (agent files added/removed)
         - `skill_version` differs from current skill version (evaluation criteria changed)
         - `evaluated_date` is >60 days ago (too old to trust)
@@ -281,7 +282,7 @@ Apply evaluation checklists based on the system's architecture (from Phase 0 fin
 **Apply conditionally:**
 5. Read `checklists/context-management.md` — **only if** Phase 0 detected context assembly, retrieval, history management, or prompts >4K tokens
 6. Read `checklists/multi-agent.md` — **only if** Phase 0 found 2+ agents
-7. Read `checklists/eval-infrastructure.md` — **only if** Phase 0 found eval scripts, test suites, or CI config (step 4 of Phase 0)
+7. Read `checklists/eval-infrastructure.md` — always apply. If Phase 0 found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -436,7 +437,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 2. Tool Design             | N/10  | [1-line summary]              |
 | 3. Context Management      | N/10 or N/A | [1-line summary or "Not applicable"] |
 | 4. Multi-Agent Orch.       | N/10 or N/A | [1-line summary or "Not applicable — single agent"] |
-| 5. Eval Infrastructure     | N/10 or N/A | [1-line summary or "Not applicable — no eval code"] |
+| 5. Eval Infrastructure     | N/10  | [1-line summary]              |
 | 6. Production Readiness    | N/10  | [1-line summary]              |
 | 7. Model Awareness         | N/10  | [1-line summary]              |
 +--------------------------------------------------------------------+

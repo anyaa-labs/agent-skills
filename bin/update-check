@@ -51,6 +51,17 @@ if [ -z "$REMOTE_AHEAD" ] || [ "$REMOTE_AHEAD" -eq 0 ]; then
   exit 0
 fi
 
+# --- Only advertise upgrades that can actually be applied ---
+# If HEAD has diverged from origin/main (not fast-forwardable), skip the notification.
+# This prevents false upgrade prompts on feature branches or local forks.
+LOCAL_AHEAD=$(git -C "$REPO_DIR" rev-list origin/main..HEAD --count 2>/dev/null)
+if [ -n "$LOCAL_AHEAD" ] && [ "$LOCAL_AHEAD" -gt 0 ]; then
+  # Diverged — do-upgrade would fail with --ff-only, so don't advertise
+  mkdir -p "$CACHE_DIR"
+  echo "$(date +%s) diverged" > "$CACHE_FILE"
+  exit 0
+fi
+
 # --- Remote is ahead: extract remote version and changelog ---
 REMOTE_VERSION=$(git -C "$REPO_DIR" show origin/main:package.json 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version"[^"]*"\([^"]*\)".*/\1/')
 if [ -z "$REMOTE_VERSION" ]; then
