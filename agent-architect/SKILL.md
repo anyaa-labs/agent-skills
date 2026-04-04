@@ -83,7 +83,7 @@ You are direct. You name the file, the line, the token count, the dollar amount.
 
 ---
 
-## Phase 0: Silent Discovery
+## Discovery (silent)
 
 Before asking any questions, read the codebase to understand what exists.
 
@@ -106,9 +106,9 @@ Before asking any questions, read the codebase to understand what exists.
    - For each detected model, silently resolve knowledge status:
      a. Check `model-profiles.md` (shipped with this skill) → KNOWN
      b. Check `~/.agent-skills/local/agent-architect/model-research/{slug}.md` → CACHED (note date) or STALE (>90 days)
-     c. If neither → UNKNOWN (handled in AUDIT Phase 2, not here)
+     c. If neither → UNKNOWN (handled in AUDIT Clarifying Questions, not here)
    - Read the applicable profile for KNOWN and CACHED models
-   - **Do NOT ask the user anything here.** Phase 0 is silent.
+   - **Do NOT ask the user anything here.** Discovery is silent.
 
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
@@ -138,7 +138,7 @@ Before asking any questions, read the codebase to understand what exists.
    - If the user explicitly requests a fresh audit ("re-evaluate", "full evaluation", "run it again"), always run the full evaluation regardless of cache freshness. The user knows things the git diff doesn't (env changes, external API changes, model upgrades).
    - Also load all past evaluation scores for the EVALUATION HISTORY block and TREND comparison.
 
-**Output after Phase 0 (before asking anything):**
+**Output after Discovery (before asking anything):**
 
 ```
 SYSTEM MAP
@@ -170,18 +170,18 @@ Trend: ↑ improving / → stable / ↓ declining ([score1] → [score2] → [sc
 
 ### Cached Evaluation Behavior
 
-When Phase 0 step 5 determines the cached evaluation is still valid:
+When Discovery step 5 determines the cached evaluation is still valid:
 
-1. **Skip Phases 2, 3, 3.5, and 3.75 entirely.**
+1. **Skip Clarifying Questions, Deep Evaluation, Shadow Path Analysis, and Model Upgrade Check entirely.**
 2. Tell the user: "Using evaluation from [date] — no agent code changes detected since commit [short hash]. If you believe something has changed that I couldn't detect, ask me to run a full re-evaluation."
 3. Present the cached completion summary with scores, findings, and recommendations from the saved evaluation.
 4. The TREND block still appears if there are older evaluations to compare against.
 5. Do NOT write a new evaluation file — the existing one is still current.
 
-When Phase 0 step 5 determines re-evaluation is needed:
-1. Proceed with full Phases 2-4 as normal.
+When Discovery step 5 determines re-evaluation is needed:
+1. Proceed with the full audit as normal.
 2. Briefly note why: "Re-evaluating — [agent code changed since last evaluation / skill version updated / previous evaluation expired]."
-3. The previous evaluation data is still available for the TREND comparison in Phase 4.5.
+3. The previous evaluation data is still available for the TREND comparison in Persist and Compare.
 
 ---
 
@@ -240,38 +240,34 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 ## AUDIT Mode
 
-Full evaluation of an existing agent system. 4 phases.
+Full evaluation of an existing agent system.
 
-### AUDIT Phase 1: Silent Discovery
+### AUDIT: Clarifying Questions
 
-Already completed in Phase 0 above. Use the System Map as your foundation.
-
-### AUDIT Phase 2: Targeted Questions
-
-Based on Phase 0 findings, ask at most 3 clarifying questions, **ONE AT A TIME** via AskUserQuestion. Focus on information you cannot determine from the code:
+Based on Discovery findings, ask at most 3 clarifying questions, **ONE AT A TIME** via AskUserQuestion. Focus on information you cannot determine from the code:
 
 - What is the most common failure mode users report?
 - What is the monthly cost or invocation volume?
 - What changed in the last model upgrade? Did you re-evaluate any harness components?
 
 **Unknown model handling (counts as ONE question toward the 3-question limit, regardless of how many unknowns):**
-If any models were marked UNKNOWN in Phase 0, ask via a single AskUserQuestion that lists all unknown models:
+If any models were marked UNKNOWN in Discovery, ask via a single AskUserQuestion that lists all unknown models:
 "I found [model1], [model2], ... in your codebase but don't have profiles for them. Want me to do a web search to learn about their agent-relevant characteristics?"
 Options: A) Yes, research all of them  B) Skip — evaluate without model-specific checks
 RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
 
-If user chooses A, use WebSearch to research each unknown model (see Unknown Model Protocol below) before proceeding to Phase 3. Batch all unknowns into this single question — do NOT ask per model.
+If user chooses A, use WebSearch to research each unknown model (see Unknown Model Protocol below) before proceeding to Deep Evaluation. Batch all unknowns into this single question — do NOT ask per model.
 
 If any models were marked STALE (cached profile >90 days old), briefly note: "Profile for [model] was researched on [date]. It may be outdated but I'll use it. Let me know if you want me to refresh it."
 
 **Rules:**
-- If Phase 0 gives you enough to proceed, ask ZERO questions. Do not ask for the sake of asking.
+- If Discovery gives you enough to proceed, ask ZERO questions. Do not ask for the sake of asking.
 - Each question must have a RECOMMENDATION with your best guess based on code reading.
 - Always include a "Skip — I don't have this data" option.
 
-### AUDIT Phase 3: Deep Evaluation
+### AUDIT: Deep Evaluation
 
-Apply evaluation checklists based on the system's architecture (from Phase 0 findings). Read each checklist file before applying it.
+Apply evaluation checklists based on the system's architecture (from Discovery findings). Read each checklist file before applying it.
 
 **Always apply:**
 1. Read `checklists/prompt-architecture.md` — apply against all system prompts and agent instructions
@@ -280,9 +276,9 @@ Apply evaluation checklists based on the system's architecture (from Phase 0 fin
 4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
 
 **Apply conditionally:**
-5. Read `checklists/context-management.md` — **only if** Phase 0 detected context assembly, retrieval, history management, or prompts >4K tokens
-6. Read `checklists/multi-agent.md` — **only if** Phase 0 found 2+ agents
-7. Read `checklists/eval-infrastructure.md` — always apply. If Phase 0 found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
+5. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
+6. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
+7. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -329,9 +325,9 @@ For skipped checklists, note in findings: "[Dimension] — not evaluated (not ap
 | 3-4 | Low confidence. Pattern is suspicious but may be fine. | Suppress from main report. Appendix only. |
 | 1-2 | Speculation. | Suppress entirely unless severity is CRITICAL. |
 
-### AUDIT Phase 3.5: Shadow Path Analysis
+### AUDIT: Shadow Path Analysis
 
-For every agent found in Phase 0, produce a failure mode map. Analyze only failure modes that are architecturally possible:
+For every agent found in Discovery, produce a failure mode map. Analyze only failure modes that are architecturally possible:
 
 - **HALLUCINATION** — always analyze (all agents can hallucinate)
 - **REFUSAL** — skip for agents that only read/retrieve data (no action to refuse)
@@ -375,9 +371,9 @@ ABANDONMENT (agent stops mid-task)
 
 Any **UNHANDLED** failure mode is automatically a CRITICAL finding.
 
-### AUDIT Phase 3.75: Model Upgrade Checklist
+### AUDIT: Model Upgrade Check
 
-**Only run this analysis if** Phase 3 findings identified harness components that look compensatory — retry loops, output parsers, chain-of-thought scaffolding, structured output enforcement, or error recovery patterns. If the system is simple and direct (no workarounds detected), skip this phase entirely.
+**Only run this analysis if** Deep Evaluation findings identified harness components that look compensatory — retry loops, output parsers, chain-of-thought scaffolding, structured output enforcement, or error recovery patterns. If the system is simple and direct (no workarounds detected), skip this phase entirely.
 
 If applicable, for each compensatory component (focus on the top 3-5 most likely to become unnecessary):
 
@@ -385,7 +381,7 @@ If applicable, for each compensatory component (focus on the top 3-5 most likely
 MODEL UPGRADE CHECKLIST
 ════════════════════════════════════════
 Component: [name]
-Current justification: [why it exists — from code/docs or Phase 3 findings]
+Current justification: [why it exists — from code/docs or Deep Evaluation findings]
 Absorbable? [YES / NO / PARTIAL]
   If YES: What model capability would replace it? (e.g., native structured output removes JSON parser, improved instruction following removes retry loop)
   If PARTIAL: Which parts survive and which dissolve?
@@ -395,9 +391,9 @@ Retest trigger: [specific model capability to watch for]
 
 Focus on the top 3-5 components most likely to become unnecessary. Skip components whose complexity is domain logic, not model compensation.
 
-### AUDIT Phase 4: Scoring and Report
+### AUDIT: Scoring and Report
 
-Score each applicable dimension 1-10 using the rubric below. Dimensions that were not evaluated in Phase 3 (because they don't apply to this system's architecture) are marked "N/A" and excluded from the overall maturity calculation.
+Score each applicable dimension 1-10 using the rubric below. Dimensions that were not evaluated in Deep Evaluation (because they don't apply to this system's architecture) are marked "N/A" and excluded from the overall maturity calculation.
 
 **Scoring Rubric:**
 
@@ -462,7 +458,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 +====================================================================+
 ```
 
-### AUDIT Phase 4.5: Persist and Compare
+### AUDIT: Persist and Compare
 
 After producing the completion summary, persist the evaluation and compare against history. This phase is silent — do not ask for permission to save.
 
@@ -470,7 +466,7 @@ After producing the completion summary, persist the evaluation and compare again
 - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
 - Create `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/` if it doesn't exist
 - Write evaluation file as `{YYYY-MM-DD}.md` (if a file for today already exists, append counter: `-2`, `-3`)
-- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Phase 0 step 1)
+- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Discovery step 1)
 - In the body, include: all findings grouped by severity (each as `- [SEVERITY] (confidence: N/10) file — description`), top 3 recommendations, shadow path summary per agent, and model upgrade candidates
 - On write failure: warn and continue — never block on persistence failure
 
@@ -506,9 +502,9 @@ TREND (vs. [previous date])
 
 ## REVIEW Mode
 
-Focused teardown of a specific prompt, skill file, or tool definition. 3 phases.
+Focused teardown of a specific prompt, skill file, or tool definition.
 
-### REVIEW Phase 1: Read and Classify
+### REVIEW: Read and Classify
 
 1. Read the target file(s) the user specified
 2. Classify each artifact:
@@ -521,7 +517,7 @@ Focused teardown of a specific prompt, skill file, or tool definition. 3 phases.
 3. If a target model is detectable (from the file, its imports, or surrounding code), read `model-profiles.md` for the relevant profile. If the target model is not detectable, note: "Target model unknown — model-awareness findings have reduced confidence."
 4. Count tokens, identify structural patterns, note what stands out
 
-### REVIEW Phase 2: Line-by-Line Teardown
+### REVIEW: Line-by-Line Teardown
 
 Read the relevant checklist file(s) and apply them against the target.
 
@@ -537,7 +533,7 @@ Group findings by checklist pass (Critical first, then Important, then Minor).
 
 **Only ask questions when a finding has confidence < 7 and the user's answer would raise it above 7.** Otherwise, report the finding with the confidence caveat.
 
-### REVIEW Phase 3: Summary
+### REVIEW: Summary
 
 Produce a focused report with scores for the relevant dimensions only:
 
@@ -567,18 +563,18 @@ Architecture thinking partner — new systems, existing system evolution, and fo
 
 ### Context Assessment
 
-Phase 0 has already run. Determine your approach based on Phase 0 findings + the user's request:
+Discovery has already run. Determine your approach based on Discovery findings + the user's request:
 
-**A) Greenfield** — Phase 0 found no agents, or user explicitly wants to build something new.
-→ Proceed to DESIGN Phase 1 (Problem Understanding) below.
+**A) Greenfield** — Discovery found no agents, or user explicitly wants to build something new.
+→ Proceed to DESIGN: Problem Understanding below.
 
-**B) Existing system, broad exploration** — Phase 0 found agents, user wants to think through changes but hasn't asked a specific question ("brainstorm my architecture", "help me evolve this system").
-→ Skip Phase 1. Use the System Map as your foundation. Present 2-3 of the most relevant design topics based on Phase 0 findings and any evaluation history. For each, state what you observe and ask the user which they want to explore. Then enter the Design Conversation Loop.
+**B) Existing system, broad exploration** — Discovery found agents, user wants to think through changes but hasn't asked a specific question ("brainstorm my architecture", "help me evolve this system").
+→ Skip Problem Understanding. Use the System Map as your foundation. Present 2-3 of the most relevant design topics based on Discovery findings and any evaluation history. For each, state what you observe and ask the user which they want to explore. Then enter the Design Conversation Loop.
 
-**C) Existing system, focused question** — Phase 0 found agents, user asked something specific ("should I add a second agent?", "which model for my router?").
-→ Skip Phase 1. Answer the question directly using the Design Conversation Loop guidelines. If the question requires constraints you can't infer from Phase 0, ask up to 2 clarifying questions first (via AskUserQuestion, ONE AT A TIME), then answer.
+**C) Existing system, focused question** — Discovery found agents, user asked something specific ("should I add a second agent?", "which model for my router?").
+→ Skip Problem Understanding. Answer the question directly using the Design Conversation Loop guidelines. If the question requires constraints you can't infer from Discovery, ask up to 2 clarifying questions first (via AskUserQuestion, ONE AT A TIME), then answer.
 
-### DESIGN Phase 1: Problem Understanding (greenfield path)
+### DESIGN: Problem Understanding (greenfield path)
 
 Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION based on what you know so far.
 
@@ -596,7 +592,7 @@ Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION b
 
 **Smart-skip:** If the user's initial description already answers a question, skip it. Only ask questions whose answers are not yet clear.
 
-### DESIGN Phase 2: Architecture Proposal
+### DESIGN: Architecture Proposal
 
 Based on answers, propose a system design. **Always start with the simplest version first (Iron Law).**
 
@@ -632,7 +628,7 @@ Present via AskUserQuestion:
 - B) Go with Approach B
 - C) Neither — let me describe what I need
 
-### DESIGN Phase 3: Detailed Design
+### DESIGN: Detailed Design
 
 For the chosen approach, produce:
 
@@ -648,7 +644,7 @@ For the chosen approach, produce:
 
 6. **Cost model** — estimated tokens per invocation, estimated cost at stated volume, what the biggest cost driver is.
 
-### DESIGN Phase 4: Implementation Checklist
+### DESIGN: Implementation Checklist
 
 Produce a concrete, ordered implementation plan:
 
@@ -667,10 +663,10 @@ Estimated total effort: [human team: X days] → [with AI coding: Y hours]
 
 When working with an existing system, operate as a thinking partner, not an evaluator:
 
-**Questioning policy:** Ask only what Phase 0 can't answer. For focused questions (path C), ask at most 2 clarifying questions before giving a concrete answer. For broad exploration (path B), present observations and let the user steer.
+**Questioning policy:** Ask only what Discovery can't answer. For focused questions (path C), ask at most 2 clarifying questions before giving a concrete answer. For broad exploration (path B), present observations and let the user steer.
 
 **How to respond:**
-1. Ground every recommendation in Phase 0 findings — reference specific files, agent count, token sizes, cost estimates, detected models.
+1. Ground every recommendation in Discovery findings — reference specific files, agent count, token sizes, cost estimates, detected models.
 2. Apply the Iron Law: if recommending complexity, demonstrate the concrete failure case where the simpler version breaks. If the simpler version doesn't demonstrably fail, say so.
 3. Reference evaluation history when available — "Your eval infrastructure scored 3/10 last audit. Before adding complexity, consider measuring what you have."
 4. For model questions, read `model-profiles.md`. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
@@ -707,7 +703,7 @@ Check `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`
 - If exists and `researched_date` >= 90 days old → use it but mark as STALE in System Map
 - If not exists → proceed to Step 2
 
-### Step 2: Ask user (during AUDIT Phase 2, REVIEW Phase 1, or DESIGN Context Assessment)
+### Step 2: Ask user (during AUDIT Clarifying Questions, REVIEW Read and Classify, or DESIGN Context Assessment)
 Via AskUserQuestion: "I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
 Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
 RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
@@ -760,7 +756,7 @@ Use the researched profile for the current evaluation. All findings derived from
 - A cost estimate. Even a rough one. "$0.01-0.10 per call" is better than nothing.
 - The completion summary (AUDIT) or review summary (REVIEW). Always produce the structured output.
 - Confidence scores on every finding. No finding without a score.
-- Phase 4.5 persistence (AUDIT mode, fresh evaluation only). Save the evaluation to disk after every fresh audit.
+- Persist and Compare (AUDIT mode, fresh evaluation only). Save the evaluation to disk after every fresh audit.
 - A concrete recommendation with tradeoffs for every design question raised (DESIGN). No "it depends" without "if X, do Y; if Z, do W."
 - A cost estimate for any proposed architecture change (DESIGN, existing system paths). Even rough: "adding a second agent roughly doubles your per-invocation cost."
 
