@@ -270,18 +270,22 @@ If any models were marked STALE (cached profile >90 days old), briefly note: "Pr
 
 ### AUDIT Phase 3: Deep Evaluation
 
-Apply all 7 evaluation checklists. For each dimension, read the corresponding checklist file, apply it against the codebase, and produce scored findings.
+Apply evaluation checklists based on the system's architecture (from Phase 0 findings). Read each checklist file before applying it.
 
-**Read each checklist file before applying it:**
+**Always apply:**
 1. Read `checklists/prompt-architecture.md` — apply against all system prompts and agent instructions
 2. Read `checklists/tool-design.md` — apply against all tool definitions and function schemas
-3. Read `checklists/context-management.md` — apply against context assembly, retrieval, and history management
-4. Read `checklists/multi-agent.md` — apply against orchestration code, agent communication, and routing
-5. Read `checklists/eval-infrastructure.md` — apply against eval scripts, test suites, and CI config
-6. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
-7. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-6.
+3. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
+4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
 
-**If a checklist file cannot be read, STOP and report the error.** Do not proceed without the checklist.
+**Apply conditionally:**
+5. Read `checklists/context-management.md` — **only if** Phase 0 detected context assembly, retrieval, history management, or prompts >4K tokens
+6. Read `checklists/multi-agent.md` — **only if** Phase 0 found 2+ agents
+7. Read `checklists/eval-infrastructure.md` — **only if** Phase 0 found eval scripts, test suites, or CI config (step 4 of Phase 0)
+
+For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
+
+**If a required checklist file cannot be read, STOP and report the error.** If a conditional checklist cannot be read but the system doesn't need it, log a warning and continue.
 
 **For each finding, use this format:**
 
@@ -326,7 +330,14 @@ Apply all 7 evaluation checklists. For each dimension, read the corresponding ch
 
 ### AUDIT Phase 3.5: Shadow Path Analysis
 
-For every agent found in Phase 0, produce a failure mode map:
+For every agent found in Phase 0, produce a failure mode map. Analyze only failure modes that are architecturally possible:
+
+- **HALLUCINATION** — always analyze (all agents can hallucinate)
+- **REFUSAL** — skip for agents that only read/retrieve data (no action to refuse)
+- **LOOP** — skip for single-shot agents with no retry logic or iterative behavior
+- **ABANDONMENT** — skip for agents that complete in a single turn with no multi-step workflow
+
+For skipped modes, mark: "N/A — not possible given architecture ([reason])."
 
 ```
 FAILURE MODE MAP: [Agent Name]
@@ -365,7 +376,9 @@ Any **UNHANDLED** failure mode is automatically a CRITICAL finding.
 
 ### AUDIT Phase 3.75: Model Upgrade Checklist
 
-For each agent and major harness component identified in Phase 0, answer:
+**Only run this analysis if** Phase 3 findings identified harness components that look compensatory — retry loops, output parsers, chain-of-thought scaffolding, structured output enforcement, or error recovery patterns. If the system is simple and direct (no workarounds detected), skip this phase entirely.
+
+If applicable, for each compensatory component (focus on the top 3-5 most likely to become unnecessary):
 
 ```
 MODEL UPGRADE CHECKLIST
@@ -383,7 +396,7 @@ Focus on the top 3-5 components most likely to become unnecessary. Skip componen
 
 ### AUDIT Phase 4: Scoring and Report
 
-Score each dimension 1-10 using the rubric below.
+Score each applicable dimension 1-10 using the rubric below. Dimensions that were not evaluated in Phase 3 (because they don't apply to this system's architecture) are marked "N/A" and excluded from the overall maturity calculation.
 
 **Scoring Rubric:**
 
@@ -397,7 +410,7 @@ Score each dimension 1-10 using the rubric below.
 | Production Readiness | 1.5x | Graceful degradation, cost alerts, rate limiting, observability, helpful errors | Happy path works. Failures produce 500 errors. Basic logging. | Demo-quality only. Breaks on first real user. |
 | Model Awareness | 1.0x | Correct model for each role, model-specific prompt patterns, structured output enforcement, known failure modes mitigated, harness components marked for model-upgrade review | Using models but no model-specific optimization. Generic prompts applied to all models. | Wrong model for role, no structured output enforcement, known failure modes unmitigated, prompt format mismatched to model. |
 
-**Overall Maturity Score:** Weighted average (Prompt Architecture and Production Readiness count 1.5x, all others 1.0x).
+**Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture and Production Readiness count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
 **Maturity Levels:**
 - **8.0-10.0:** Production-grade. Ship it.
@@ -421,9 +434,9 @@ Score each dimension 1-10 using the rubric below.
 +--------------------------------------------------------------------+
 | 1. Prompt Architecture     | N/10  | [1-line summary]              |
 | 2. Tool Design             | N/10  | [1-line summary]              |
-| 3. Context Management      | N/10  | [1-line summary]              |
-| 4. Multi-Agent Orch.       | N/10  | [1-line summary]              |
-| 5. Eval Infrastructure     | N/10  | [1-line summary]              |
+| 3. Context Management      | N/10 or N/A | [1-line summary or "Not applicable"] |
+| 4. Multi-Agent Orch.       | N/10 or N/A | [1-line summary or "Not applicable — single agent"] |
+| 5. Eval Infrastructure     | N/10 or N/A | [1-line summary or "Not applicable — no eval code"] |
 | 6. Production Readiness    | N/10  | [1-line summary]              |
 | 7. Model Awareness         | N/10  | [1-line summary]              |
 +--------------------------------------------------------------------+
@@ -742,7 +755,7 @@ Use the researched profile for the current evaluation. All findings derived from
 
 **NEVER stop without completing these:**
 - The Iron Law check. Every recommendation is tested against it.
-- The failure mode cartography (AUDIT mode, fresh evaluation only). Every agent gets its 4 failure paths.
+- The failure mode cartography (AUDIT mode, fresh evaluation only). Every agent gets its architecturally possible failure paths analyzed (N/A for modes that can't occur).
 - A cost estimate. Even a rough one. "$0.01-0.10 per call" is better than nothing.
 - The completion summary (AUDIT) or review summary (REVIEW). Always produce the structured output.
 - Confidence scores on every finding. No finding without a score.
