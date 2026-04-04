@@ -24,6 +24,27 @@ allowed-tools:
   - WebSearch
 ---
 
+## Preamble: Update Check
+
+On every invocation, before doing anything else, silently run this command:
+
+```bash
+bash "$(dirname "$(readlink "$HOME/.claude/skills/agent-architect")")/bin/update-check" 2>/dev/null || true
+```
+
+**Interpret the output:**
+
+- **If the output contains `UPDATE_AVAILABLE`:** Parse `LOCAL_VERSION`, `REMOTE_VERSION`, and the `CHANGELOG_DIFF` section from the output. Then:
+  1. Tell the user a new version is available, showing the version numbers.
+  2. Summarize the changelog entries as 3-5 user-facing bullets highlighting new capabilities, improvements, and fixes. Focus on value, not internal details.
+  3. Ask the user: **"Would you like to update now?"** (use AskUserQuestion).
+  4. **If the user approves:** Run `bash "$(dirname "$(readlink "$HOME/.claude/skills/agent-architect")")/bin/do-upgrade"`. If output contains `UPGRADE_SUCCESS`, confirm the new version and continue with the user's original request. If `UPGRADE_FAILED`, tell the user the auto-upgrade failed and suggest they run `git pull` manually in the repo directory (shown in the update-check output as `REPO_DIR`), then proceed with the current version.
+  5. **If the user declines:** Proceed immediately with the current version. Do not mention the update again for the rest of this session.
+
+- **If no output or the command fails:** Proceed silently. Never mention the update check to the user.
+
+---
+
 # Agent Architect
 
 ## Iron Law

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# update-check — detect when a newer version of agent-skills is available upstream.
+# Outputs structured info when an update exists, nothing otherwise.
+# Designed to be called from SKILL.md preambles. Never exits non-zero.
+set +e
+
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CACHE_DIR="$HOME/.agent-skills/local/update-check"
+CACHE_FILE="$CACHE_DIR/last-check"
+TTL=3600  # 1 hour in seconds
+
+# --- Read local version ---
+LOCAL_VERSION=$(grep '"version"' "$REPO_DIR/package.json" 2>/dev/null | head -1 | sed 's/.*"version"[^"]*"\([^"]*\)".*/\1/')
+if [ -z "$LOCAL_VERSION" ]; then
+  exit 0
+fi
+
+# --- Check cache ---
+if [ -f "$CACHE_FILE" ]; then
+  CACHE_EPOCH=$(head -1 "$CACHE_FILE" 2>/dev/null | cut -d' ' -f1)
+  CACHE_STATUS=$(head -1 "$CACHE_FILE" 2>/dev/null | cut -d' ' -f2)
+  NOW=$(date +%s)
+  if [ -n "$CACHE_EPOCH" ] && [ $((NOW - CACHE_EPOCH)) -lt $TTL ]; then
+    if [ "$CACHE_STATUS" = "up-to-date" ]; then
+      exit 0
+    elif [ "$CACHE_STATUS" = "update-available" ]; then
+      # Replay cached update notification
+      CACHED_REMOTE_VERSION=$(head -1 "$CACHE_FILE" | cut -d' ' -f3)
+      CACHED_CHANGELOG=$(tail -n +2 "$CACHE_FILE")
+      echo "UPDATE_AVAILABLE"
+      echo "LOCAL_VERSION=$LOCAL_VERSION"
+      echo "REMOTE_VERSION=$CACHED_REMOTE_VERSION"
+      echo "REPO_DIR=$REPO_DIR"
+      echo "CHANGELOG_DIFF:"
+      echo "$CACHED_CHANGELOG"
+      exit 0
+    fi
+  fi
+fi
+
+# --- Fetch from remote (the only network call) ---
+git -C "$REPO_DIR" fetch origin --quiet 2>/dev/null || exit 0
+
+# --- Check if origin/main has commits we don't have ---
+REMOTE_AHEAD=$(git -C "$REPO_DIR" rev-list HEAD..origin/main --count 2>/dev/null)
+
+if [ -z "$REMOTE_AHEAD" ] || [ "$REMOTE_AHEAD" -eq 0 ]; then
+  # We're up to date or ahead of origin/main — no update needed
+  mkdir -p "$CACHE_DIR"
+  echo "$(date +%s) up-to-date" > "$CACHE_FILE"
+  exit 0
+fi
+
+# --- Remote is ahead: extract remote version and changelog ---
+REMOTE_VERSION=$(git -C "$REPO_DIR" show origin/main:package.json 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version"[^"]*"\([^"]*\)".*/\1/')
+if [ -z "$REMOTE_VERSION" ]; then
+  REMOTE_VERSION="newer"
+fi
+
+# Extract changelog entries between local and remote versions.
+# Get the full remote changelog, then extract entries above the current local version.
+REMOTE_CHANGELOG=$(git -C "$REPO_DIR" show origin/main:CHANGELOG.md 2>/dev/null || echo "")
+if [ -n "$REMOTE_CHANGELOG" ]; then
+  # Extract everything from the top of the changelog down to (but not including) the local version header
+  CHANGELOG_DIFF=$(echo "$REMOTE_CHANGELOG" | sed -n "/^## \[${REMOTE_VERSION}\]/,/^## \[${LOCAL_VERSION}\]/{ /^## \[${LOCAL_VERSION}\]/d; p; }")
+  # If that didn't match (version format mismatch), just grab the first section
+  if [ -z "$CHANGELOG_DIFF" ]; then
+    CHANGELOG_DIFF=$(echo "$REMOTE_CHANGELOG" | sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' | head -20)
+  fi
+else
+  CHANGELOG_DIFF=""
+fi
+
+# --- Cache the result ---
+mkdir -p "$CACHE_DIR"
+{
+  echo "$(date +%s) update-available $REMOTE_VERSION"
+  echo "$CHANGELOG_DIFF"
+} > "$CACHE_FILE"
+
+# --- Output structured block ---
+echo "UPDATE_AVAILABLE"
+echo "LOCAL_VERSION=$LOCAL_VERSION"
+echo "REMOTE_VERSION=$REMOTE_VERSION"
+echo "REPO_DIR=$REPO_DIR"
+echo "CHANGELOG_DIFF:"
+echo "$CHANGELOG_DIFF"

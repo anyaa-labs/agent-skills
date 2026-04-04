@@ -1,6 +1,6 @@
 {
   "name": "agent-skills",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude Code skills for evaluating and designing multi-agent systems",
   "private": true,
   "license": "MIT"
