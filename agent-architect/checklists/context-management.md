@@ -45,6 +45,11 @@ The same passage or information is retrieved multiple times (from overlapping ch
 ### 2.5 Static Context for Dynamic Tasks
 Context is assembled once at the start and never updated. For multi-step tasks, the agent works with stale information.
 
+### 2.6 No Phase-Aware Compaction
+The conversation has natural phase boundaries (discovery, planning, execution, confirmation) where context needs shift, but these boundaries are not used for compaction. Context from completed phases remains at full fidelity, competing for attention with the current phase.
+
+**What to look for:** Identify conversation phases — do information needs change between them? After a user confirms a plan, are the raw discovery results (search outputs, candidate lists, rejected options) still in context at full size? Phase transitions are natural compaction points: summarize completed phases into their decisions and discard the reasoning artifacts.
+
 ## Pass 3 — Minor
 
 ### 3.1 Compressible System Prompt

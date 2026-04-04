@@ -143,15 +143,15 @@ RECOMMENDATION: State which mode fits based on Phase 0 findings and why.
 
 These are not checklist items. They are thinking instincts. Internalize them. Apply them throughout every evaluation. Do not enumerate them in output — let them shape your perspective.
 
-1. **Simplicity Ratchet** — Complexity only moves in one direction: up. Every added agent, tool, or routing layer is permanent weight. Before adding, prove the simple version fails with a concrete example.
+1. **Simplicity Ratchet** — Complexity only moves in one direction: up. Every added agent, tool, or routing layer is permanent weight. Before adding, prove the simple version fails with a concrete example. Periodically reverse the question: is this complexity still needed? Which scaffold, agent, or parsing layer is most likely absorbable by the next model upgrade?
 
 2. **The GAN Instinct** — Separate the generator from the evaluator. The agent that writes should not be the agent that judges. When you see a single agent doing both, that is an architectural smell.
 
-3. **Context is Calories** — Every token in the context window has diminishing returns. The first 2K tokens of a well-crafted prompt are worth more than the next 20K of "helpful context." When you see a 15K-token prompt, ask: which 2K are doing 80% of the work?
+3. **Context is Calories** — Every token in the context window has diminishing returns. The first 2K tokens of a well-crafted prompt are worth more than the next 20K of "helpful context." When you see a 15K-token prompt, ask: which 2K are doing 80% of the work? Also ask: does the conversation have natural phase boundaries (discovery, planning, execution, confirmation) where context needs shift? High-value context in one phase becomes noise in the next.
 
 4. **Fresh Eyes Doctrine** — For long-running tasks, a clean context reset beats incremental compaction. Design for checkpoints and handoffs, not marathon sessions.
 
-5. **The Tool Contract** — A tool is a contract between the agent and the system. Design for what the agent needs to decide, not what the database stores. `resolve_customer_issue(id, status, note)` beats `execute_sql(query)`.
+5. **The Tool Contract** — A tool is a contract between the agent and the system. Design for what the agent needs to decide, not what the database stores. `resolve_customer_issue(id, status, note)` beats `execute_sql(query)`. Go further: the tool's I/O shape must match the agent's decision shape. If the agent wants to swap one dish but the tool requires reconstructing the entire meal plan, the tool is forcing cognitive overhead that belongs in the system layer.
 
 6. **Signal-to-Noise Ratio** — Tool responses should be high-signal. If a tool returns 50 fields and the agent uses 3, the other 47 are noise. When in doubt, return less.
 
@@ -297,6 +297,24 @@ ABANDONMENT (agent stops mid-task)
 
 Any **UNHANDLED** failure mode is automatically a CRITICAL finding.
 
+### AUDIT Phase 3.75: Model Upgrade Checklist
+
+For each agent and major harness component identified in Phase 0, answer:
+
+```
+MODEL UPGRADE CHECKLIST
+════════════════════════════════════════
+Component: [name]
+Current justification: [why it exists — from code/docs or Phase 3 findings]
+Absorbable? [YES / NO / PARTIAL]
+  If YES: What model capability would replace it? (e.g., native structured output removes JSON parser, improved instruction following removes retry loop)
+  If PARTIAL: Which parts survive and which dissolve?
+Retest trigger: [specific model capability to watch for]
+════════════════════════════════════════
+```
+
+Focus on the top 3-5 components most likely to become unnecessary. Skip components whose complexity is domain logic, not model compensation.
+
 ### AUDIT Phase 4: Scoring and Report
 
 Score each dimension 1-10 using the rubric below.
@@ -358,6 +376,7 @@ Score each dimension 1-10 using the rubric below.
 | 3. [action] — [impact] — effort: S/M/L                             |
 +--------------------------------------------------------------------+
 | Shadow paths mapped        | N agents, M UNHANDLED failure modes     |
+| Model upgrade candidates   | N components likely absorbable           |
 | Iron Law violations        | N (each is a critical finding)           |
 | Cognitive patterns applied | [list which were triggered]              |
 +====================================================================+

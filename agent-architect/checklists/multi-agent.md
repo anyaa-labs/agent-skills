@@ -16,10 +16,10 @@ Multiple agents may produce findings, recommendations, or actions for the same i
 
 **What to look for:** A merge/dedup step after agents produce output. Fingerprinting by key fields (file:line:category or equivalent).
 
-### 1.3 No Handoff Contract
-Agents pass unstructured text to each other. The receiving agent must parse, interpret, and hope it understands the sender's intent. Structured handoff artifacts (JSON, typed objects) eliminate ambiguity.
+### 1.3 No Handoff Contract / Unvalidated Handoff
+Agents pass unstructured text to each other, or have a contract that is not validated on both sides. The receiving agent must parse, interpret, and hope it understands the sender's intent. Structured handoff artifacts (JSON, typed objects) eliminate ambiguity — but only if both sides agree on the schema and the receiver validates incoming data.
 
-**What to look for:** Defined schemas for inter-agent communication. If agents communicate via freeform prompt text, flag it.
+**What to look for:** (a) Defined schemas for inter-agent communication — if agents communicate via freeform prompt text, flag it. (b) Contract validation — does the receiving agent validate the handoff artifact against the expected schema, or does it trust blindly? (c) Contract testing — do evals verify that handoff data produced by agent A is correctly consumed by agent B? (Cross-reference eval-infrastructure.md check 2.4 for contract test coverage.)
 
 ### 1.4 No Router Fallback
 A router/dispatcher agent classifies inputs and routes to specialists, but has no fallback for unrecognized or ambiguous inputs. Unrouted requests are silently dropped or sent to a random specialist.
