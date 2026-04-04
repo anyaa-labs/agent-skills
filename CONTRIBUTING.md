@@ -18,18 +18,23 @@ Skills that need to persist runtime data locally (caches, research results, user
 
 ### Example
 
-The `agent-architect` skill uses this for caching web-researched model profiles:
+The `agent-architect` skill uses this for caching web-researched model profiles and persisting evaluation history:
 
 ```
 ~/.agent-skills/
 └── local/
     └── agent-architect/
-        └── model-research/
-            ├── qwen-72b.md
-            └── yi-34b.md
+        ├── model-research/
+        │   ├── qwen-72b.md
+        │   └── yi-34b.md
+        └── projects/
+            └── my-agent-system/
+                └── evaluations/
+                    ├── 2026-03-15.md
+                    └── 2026-04-04.md
 ```
 
-Each file has frontmatter with `researched_date` so the skill can flag stale profiles (>90 days) and offer to refresh them.
+Model research files have frontmatter with `researched_date` so the skill can flag stale profiles (>90 days) and offer to refresh them. Evaluation files have frontmatter with `evaluated_date`, `git_commit`, and `skill_version` so the skill can determine whether a cached evaluation is still valid or re-evaluation is needed.
 
 ### Conflict Avoidance
 

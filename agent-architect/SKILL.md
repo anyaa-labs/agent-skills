@@ -1,15 +1,19 @@
 ---
 name: agent-architect
-version: 0.2.0
+version: 0.3.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 7-dimension scoring), REVIEW
-  (focused prompt/skill teardown), DESIGN (architect a new agent system from scratch).
-  Incorporates 10 lessons from Anthropic's engineering blog and 10 patterns from
-  production skill systems. Use when asked to "review my agent", "evaluate my prompts",
-  "audit my multi-agent system", "design an agent", or "is my agent architecture good".
-  Proactively invoke when the user shows agent code, prompt files, tool definitions,
-  or multi-agent orchestration and asks for feedback. (agent-skills)
+  design. Three modes: AUDIT (full system evaluation with 7-dimension scoring and
+  cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
+  (architect a new agent system from scratch). Persists evaluation history to track
+  improvement and regression over time — silently uses cached evaluations when the
+  codebase hasn't changed, re-evaluates automatically when it detects code changes,
+  new agent files, or skill version updates. Incorporates 10 lessons from Anthropic's
+  engineering blog and 13 cognitive patterns from production agent systems. Use when
+  asked to "review my agent", "evaluate my prompts", "audit my multi-agent system",
+  "design an agent", or "is my agent architecture good". Proactively invoke when the
+  user shows agent code, prompt files, tool definitions, or multi-agent orchestration
+  and asks for feedback. (agent-skills)
 allowed-tools:
   - Read
   - Grep
@@ -92,6 +96,23 @@ Before asking any questions, read the codebase to understand what exists.
    - CI integration for agent quality
    - Baseline scores or regression tracking
 
+5. **Check for past evaluations (silent decision, transparent outcome):**
+   - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
+   - Check `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/`
+   - If directory doesn't exist or is empty → no history, proceed with full evaluation
+   - If evaluations exist:
+     a. Read the most recent evaluation file
+     b. Extract overall maturity score, dimension scores, git commit hash, skill version, and agent files list
+     c. Determine if re-evaluation is needed — **re-evaluate** if ANY of these are true:
+        - `git_commit` differs from current HEAD (code changed)
+        - `agent_files` list differs from files discovered in step 1 (agent files added/removed)
+        - `skill_version` differs from current skill version (evaluation criteria changed)
+        - `evaluated_date` is >60 days ago (too old to trust)
+     d. If NONE of the above are true → **use cached evaluation** (see Cached Evaluation Behavior below)
+     e. The decision is automatic — do not ask the user. But DO communicate the outcome transparently.
+   - If the user explicitly requests a fresh audit ("re-evaluate", "full evaluation", "run it again"), always run the full evaluation regardless of cache freshness. The user knows things the git diff doesn't (env changes, external API changes, model upgrades).
+   - Also load all past evaluation scores for the EVALUATION HISTORY block and TREND comparison.
+
 **Output after Phase 0 (before asking anything):**
 
 ```
@@ -111,31 +132,51 @@ Tool count: N tools across M agents
 Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
 
 Initial assessment: [1-2 sentences on what stands out]
+
+[Only if past evaluations exist:]
+EVALUATION HISTORY
+──────────────────────────────────────────
+Previous evaluation: [date] — Overall: N.N/10 ([maturity level])
+Evaluations on file: N (spanning [earliest date] to [latest date])
+Trend: ↑ improving / → stable / ↓ declining ([score1] → [score2] → [score3])
+──────────────────────────────────────────
 ══════════════════════════════════════════
 ```
+
+### Cached Evaluation Behavior
+
+When Phase 0 step 5 determines the cached evaluation is still valid:
+
+1. **Skip Phases 2, 3, 3.5, and 3.75 entirely.**
+2. Tell the user: "Using evaluation from [date] — no agent code changes detected since commit [short hash]. If you believe something has changed that I couldn't detect, ask me to run a full re-evaluation."
+3. Present the cached completion summary with scores, findings, and recommendations from the saved evaluation.
+4. The TREND block still appears if there are older evaluations to compare against.
+5. Do NOT write a new evaluation file — the existing one is still current.
+
+When Phase 0 step 5 determines re-evaluation is needed:
+1. Proceed with full Phases 2-4 as normal.
+2. Briefly note why: "Re-evaluating — [agent code changed since last evaluation / skill version updated / previous evaluation expired]."
+3. The previous evaluation data is still available for the TREND comparison in Phase 4.5.
 
 ---
 
 ## Mode Selection
 
-After presenting the System Map, determine the mode. If the user's request clearly maps to a mode, select it automatically. Otherwise, ask via AskUserQuestion:
+After presenting the System Map, determine the mode automatically:
 
-```
-MODE SELECTION — What kind of help do you need?
+- User provides a specific file or says "review this prompt" / "check my skill" → **REVIEW**
+- User says "design" / "build" / "new agent" / "from scratch" / codebase has no agents → **DESIGN**
+- All other cases → **AUDIT** (default for existing agent systems)
+
+Do not ask the user to select a mode. The auto-select rules cover all cases.
+
+**Mode reference:**
 
 | Mode   | When to use                                    | What you get                                    |
 |--------|------------------------------------------------|-------------------------------------------------|
 | AUDIT  | Existing agent system, want a full evaluation  | 7-dimension scored report, prioritized fixes     |
 | REVIEW | Specific prompt or skill file to evaluate      | Focused teardown with line-by-line findings      |
 | DESIGN | Building a new agent system from scratch        | Structured design session with architecture out  |
-```
-
-RECOMMENDATION: State which mode fits based on Phase 0 findings and why.
-
-**Auto-select rules:**
-- User says "review this prompt" / "check my skill" / provides a specific file → REVIEW
-- User says "evaluate" / "audit" / "how good is my system" / codebase has 2+ agents → AUDIT
-- User says "design" / "build" / "new agent" / "from scratch" / codebase has no agents → DESIGN
 
 ---
 
@@ -382,6 +423,46 @@ Score each dimension 1-10 using the rubric below.
 +====================================================================+
 ```
 
+### AUDIT Phase 4.5: Persist and Compare
+
+After producing the completion summary, persist the evaluation and compare against history. This phase is silent — do not ask for permission to save.
+
+**1. Save evaluation to disk:**
+- Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
+- Create `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/` if it doesn't exist
+- Write evaluation file as `{YYYY-MM-DD}.md` (if a file for today already exists, append counter: `-2`, `-3`)
+- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Phase 0 step 1)
+- In the body, include: all findings grouped by severity (each as `- [SEVERITY] (confidence: N/10) file — description`), top 3 recommendations, shadow path summary per agent, and model upgrade candidates
+- On write failure: warn and continue — never block on persistence failure
+
+**2. Compare against previous evaluation (if one exists):**
+- Load the most recent evaluation file BEFORE today's from the same project directory
+- Produce the TREND block appended after the completion summary:
+
+```
+TREND (vs. [previous date])
++--------------------------------------------------------------------+
+| Dimension                | Before → After | Delta | Note            |
+|--------------------------|----------------|-------|-----------------|
+| Prompt Architecture      | N → N          | ↑/→/↓ | [1-line why]    |
+| Tool Design              | N → N          | ↑/→/↓ | [1-line why]    |
+| Context Management       | N → N          | ↑/→/↓ | [1-line why]    |
+| Multi-Agent Orch.        | N → N          | ↑/→/↓ | [1-line why]    |
+| Eval Infrastructure      | N → N          | ↑/→/↓ | [1-line why]    |
+| Production Readiness     | N → N          | ↑/→/↓ | [1-line why]    |
+| Model Awareness          | N → N          | ↑/→/↓ | [1-line why]    |
++--------------------------------------------------------------------+
+| Overall                  | N.N → N.N      | ↑/→/↓ |                 |
++--------------------------------------------------------------------+
+| Regressions: N ([list dimensions that dropped])                     |
+| Past recommendations addressed: N of M                              |
++--------------------------------------------------------------------+
+```
+
+- For "past recommendations addressed": compare today's findings against the previous evaluation's top 3 recommendations. If a recommendation's corresponding finding no longer appears, mark it as addressed.
+- Any REGRESSION (dimension score dropped) gets called out with a 1-line note explaining the likely cause based on the findings diff.
+- If no previous evaluation exists, skip the TREND block entirely.
+
 ---
 
 ## REVIEW Mode
@@ -581,6 +662,7 @@ Use the researched profile for the current evaluation. All findings derived from
 
 **STOP and report when:**
 - All applicable checklists are applied and scored (AUDIT mode)
+- Cached evaluation is presented and user does not request re-evaluation (AUDIT mode, cached path)
 - Line-by-line teardown of all target files is complete (REVIEW mode)
 - Architecture proposal and implementation checklist are produced (DESIGN mode)
 - The user says "stop", "enough", or "skip the rest"
@@ -588,10 +670,11 @@ Use the researched profile for the current evaluation. All findings derived from
 
 **NEVER stop without completing these:**
 - The Iron Law check. Every recommendation is tested against it.
-- The failure mode cartography (AUDIT mode). Every agent gets its 4 failure paths.
+- The failure mode cartography (AUDIT mode, fresh evaluation only). Every agent gets its 4 failure paths.
 - A cost estimate. Even a rough one. "$0.01-0.10 per call" is better than nothing.
 - The completion summary (AUDIT) or review summary (REVIEW). Always produce the structured output.
 - Confidence scores on every finding. No finding without a score.
+- Phase 4.5 persistence (AUDIT mode, fresh evaluation only). Save the evaluation to disk after every fresh audit.
 
 ---
 

@@ -46,7 +46,7 @@ Evals only test the happy path. No eval cases for: empty input, malformed input,
 ## Pass 3 — Minor
 
 ### 3.1 No Eval Persistence
-Eval results are printed to stdout but not stored. Cannot track trends over time or compare runs.
+Eval results are printed to stdout but not stored. Cannot track trends over time or compare runs. Note: the agent-architect skill itself persists its evaluation scores to `~/.agent-skills/local/` for cross-session trend tracking — this checklist item is about the evaluated system's own eval infrastructure, not the skill's.
 
 ### 3.2 No Eval for Negative Cases
 No test that verifies the agent correctly REFUSES to do something it should not do.
