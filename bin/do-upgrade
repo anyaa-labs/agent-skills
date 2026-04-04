@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# do-upgrade — pull latest from origin/main and clear update cache.
+# Usage: bin/do-upgrade [repo_dir]
+set +e
+
+REPO_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
+CACHE_FILE="$HOME/.agent-skills/local/update-check/last-check"
+
+# Fast-forward only to avoid merge conflicts
+OUTPUT=$(git -C "$REPO_DIR" pull origin main --ff-only 2>&1)
+STATUS=$?
+
+if [ $STATUS -eq 0 ]; then
+  # Clear cache so next check starts fresh
+  rm -f "$CACHE_FILE"
+  echo "UPGRADE_SUCCESS"
+  NEW_VERSION=$(grep '"version"' "$REPO_DIR/package.json" 2>/dev/null | head -1 | sed 's/.*"version"[^"]*"\([^"]*\)".*/\1/')
+  echo "NEW_VERSION=$NEW_VERSION"
+else
+  echo "UPGRADE_FAILED"
+  echo "$OUTPUT"
+fi

@@ -43,6 +43,30 @@ Model research files have frontmatter with `researched_date` so the skill can fl
 - Skill updates replace skill directory files but never touch `~/.agent-skills/`
 - If a skill update adds shipped data for something previously user-discovered, the shipped version takes precedence (it's vetted)
 
+## Update Check Preamble
+
+Every skill should include the update check preamble at the top of its SKILL.md (after the frontmatter, before the main content). This checks whether a newer version of the repo is available upstream and offers to upgrade the user interactively.
+
+### How it works
+
+1. `bin/update-check` runs `git fetch` (at most once per hour, cached at `~/.agent-skills/local/update-check/last-check`) and compares local HEAD against `origin/main`.
+2. If an update is available, it outputs a structured block with version numbers and changelog diff.
+3. The SKILL.md preamble instructs Claude to show the user what's new, ask for approval, and run `bin/do-upgrade` if approved.
+
+### Preamble template for new skills
+
+Copy the preamble from `agent-architect/SKILL.md` and replace `agent-architect` with your skill name in the `readlink` path:
+
+```bash
+bash "$(dirname "$(readlink "$HOME/.claude/skills/YOUR-SKILL-NAME")")/bin/update-check" 2>/dev/null || true
+```
+
+The upgrade command follows the same pattern:
+
+```bash
+bash "$(dirname "$(readlink "$HOME/.claude/skills/YOUR-SKILL-NAME")")/bin/do-upgrade"
+```
+
 ## Adding New Skills
 
-Create a new directory with a `SKILL.md` file and run `./setup` to register it. See `agent-architect/SKILL.md` for the expected structure.
+Create a new directory with a `SKILL.md` file and run `./setup` to register it. See `agent-architect/SKILL.md` for the expected structure. Remember to include the update check preamble.

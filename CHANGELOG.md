@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0] — 2026-04-04
+
+### Added
+- **Interactive update notifications** — skills now detect when a newer version is available upstream and prompt the user to update. Shows what's new from the changelog, asks for approval, and performs the upgrade automatically if accepted. Checks are cached (1 hour TTL) so they never slow down skill invocation.
+- `bin/update-check` — lightweight bash script that compares local HEAD against `origin/main`, extracts changelog diff between versions.
+- `bin/do-upgrade` — performs `git pull --ff-only` and clears the update cache.
+- Update check preamble template documented in `CONTRIBUTING.md` for future skills.
+
 ## [0.2.0] — 2026-04-02
 
 ### Added
