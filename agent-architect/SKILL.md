@@ -1,6 +1,6 @@
 ---
 name: agent-architect
-version: 0.3.0
+version: 0.4.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 7-dimension scoring and
