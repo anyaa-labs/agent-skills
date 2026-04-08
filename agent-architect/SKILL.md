@@ -121,22 +121,33 @@ Before asking any questions, read the codebase to understand what exists.
    - Baseline scores or regression tracking
 
 5. **Check for past evaluations (silent decision, transparent outcome):**
-   - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
+   - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`). If there is no git remote, derive the slug from the absolute path of the repository root (replace `/` with `-`, strip leading `-`, sanitize).
+   - Detect the current branch: run `git rev-parse --abbrev-ref HEAD`.
+     - If the output is the literal string `HEAD` → detached HEAD state. Set `current_branch = "detached:{7-char-hash}"` where `{7-char-hash}` is the first 7 characters of the current HEAD commit hash.
+     - Otherwise → `current_branch = <output string>` (e.g. `main`, `feature/foo`).
    - Check `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/`
-   - If directory doesn't exist or is empty → no history, proceed with full evaluation
-   - If evaluations exist:
-     a. Read the most recent evaluation file
-     b. Extract overall maturity score, dimension scores, git commit hash, skill version, and agent files list
-     c. Determine if re-evaluation is needed — **re-evaluate** if ANY of these are true:
-        - `git_commit` differs from current HEAD (code changed)
+   - If directory doesn't exist or is empty → no history, proceed with full evaluation.
+   - If evaluations exist, read ALL evaluation files in the directory. For each file, extract its `git_branch` frontmatter field. Files with no `git_branch` field (written before branch tracking) treat as `git_branch: "unknown"`.
+   - Partition into two sets:
+     - **same-branch set**: files where `git_branch == current_branch`
+     - **cross-branch set**: all other files (including `"unknown"` branch files)
+   - **Primary lookup — same-branch set:**
+     - If same-branch set is non-empty: sort by filename descending (for same-day files with `-2`, `-3` suffixes, parse the counter as an integer so `-3` > `-2` > no suffix). Take the most recent as `candidate`.
+     - Determine if re-evaluation is needed — **re-evaluate** if ANY of these are true for `candidate`:
+        - `git_commit` differs from current HEAD (code changed on this branch)
         - Agent files have uncommitted changes (dirty working tree — check `git status` for modified/staged agent files)
         - `agent_files` list differs from files discovered in step 1 (agent files added/removed)
         - `skill_version` differs from current skill version (evaluation criteria changed)
         - `evaluated_date` is >60 days ago (too old to trust)
-     d. If NONE of the above are true → **use cached evaluation** (see Cached Evaluation Behavior below)
-     e. The decision is automatic — do not ask the user. But DO communicate the outcome transparently.
+     - If NONE of the above are true → **use same-branch cached evaluation** (see Cached Evaluation Behavior — Case A below).
+     - If any condition triggers → re-evaluate. Record the same-branch `candidate` as the baseline for TREND.
+   - **Fallback lookup — cross-branch set (only reached if same-branch set is empty):**
+     - Search the cross-branch set for any file where `git_commit` matches the current HEAD exactly.
+     - If a match is found → **use cross-branch cached evaluation** (see Cached Evaluation Behavior — Case B below). This handles the "new branch cut from main at the same commit" case — the code is identical so re-evaluation would produce the same scores.
+     - If no exact commit match → no usable cache. Proceed with full evaluation.
+   - **Trend history loading:** Use only same-branch evaluations (sorted chronologically) as the primary source for EVALUATION HISTORY and TREND. If same-branch set is empty and cross-branch evaluations exist, note them as labeled secondary context — do NOT mix them into the trend line.
+   - The decision is automatic — do not ask the user. But DO communicate the outcome transparently.
    - If the user explicitly requests a fresh audit ("re-evaluate", "full evaluation", "run it again"), always run the full evaluation regardless of cache freshness. The user knows things the git diff doesn't (env changes, external API changes, model upgrades).
-   - Also load all past evaluation scores for the EVALUATION HISTORY block and TREND comparison.
 
 **Output after Discovery (before asking anything):**
 
@@ -158,30 +169,51 @@ Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
 
 Initial assessment: [1-2 sentences on what stands out]
 
-[Only if past evaluations exist:]
-EVALUATION HISTORY
+[Only if same-branch evaluations exist:]
+EVALUATION HISTORY (branch: `[current_branch]`)
 ──────────────────────────────────────────
 Previous evaluation: [date] — Overall: N.N/10 ([maturity level])
-Evaluations on file: N (spanning [earliest date] to [latest date])
+Evaluations on this branch: N (spanning [earliest date] to [latest date])
 Trend: ↑ improving / → stable / ↓ declining ([score1] → [score2] → [score3])
+──────────────────────────────────────────
+
+[Only if same-branch set is empty but cross-branch evaluations exist:]
+EVALUATION HISTORY
+──────────────────────────────────────────
+No evaluations on `[current_branch]` yet.
+Cross-branch evaluations found: N entries on [branch1], [branch2], ...
+(Cross-branch history not shown — use same-branch history for trend accuracy.)
 ──────────────────────────────────────────
 ══════════════════════════════════════════
 ```
 
 ### Cached Evaluation Behavior
 
-When Discovery step 5 determines the cached evaluation is still valid:
+**Case A — Same-branch cache hit (preferred path):**
+
+When Discovery step 5 finds a valid same-branch cached evaluation:
 
 1. **Skip Clarifying Questions, Deep Evaluation, Shadow Path Analysis, and Model Upgrade Check entirely.**
-2. Tell the user: "Using evaluation from [date] — no agent code changes detected since commit [short hash]. If you believe something has changed that I couldn't detect, ask me to run a full re-evaluation."
+2. Tell the user: "Using evaluation from [date] on branch `[branch]` — no agent code changes detected since commit [short hash]. If you believe something has changed that I couldn't detect, ask me to run a full re-evaluation."
 3. Present the cached completion summary with scores, findings, and recommendations from the saved evaluation.
-4. The TREND block still appears if there are older evaluations to compare against.
+4. The TREND block appears only if there are two or more same-branch evaluations to compare (i.e., an older same-branch evaluation exists before the one being served). If the cached evaluation is the only one on this branch, skip the TREND block.
 5. Do NOT write a new evaluation file — the existing one is still current.
 
-When Discovery step 5 determines re-evaluation is needed:
+**Case B — Cross-branch cache hit (same commit, different branch):**
+
+When Discovery step 5 finds no same-branch evaluations but finds a cross-branch evaluation whose `git_commit` matches current HEAD exactly:
+
+1. **Skip Clarifying Questions, Deep Evaluation, Shadow Path Analysis, and Model Upgrade Check entirely.**
+2. Tell the user: "Using evaluation from [date] (originally run on branch `[source_branch]`) — code is identical to current HEAD [short hash] on `[current_branch]`. Scores are valid; evaluation history on this branch starts when code diverges."
+3. Present the cached completion summary with scores, findings, and recommendations.
+4. Skip the TREND block — there is no same-branch history to trend against. If cross-branch evaluations exist, add a one-line note: "No evaluation history on `[current_branch]` yet. Cross-branch history exists but is not shown to avoid mixing branch timelines."
+5. Do NOT write a new evaluation file. The next full evaluation (when code diverges from the cached commit) will create the first native entry for this branch.
+
+**When re-evaluation is needed:**
+
 1. Proceed with the full audit as normal.
-2. Briefly note why: "Re-evaluating — [agent code changed since last evaluation / skill version updated / previous evaluation expired]."
-3. The previous evaluation data is still available for the TREND comparison in Persist and Compare.
+2. Briefly note why: "Re-evaluating — [agent code changed since last evaluation on this branch / new branch with no prior evaluation / skill version updated / previous evaluation expired / explicitly requested]."
+3. The previous same-branch evaluation (if one exists) is available for TREND comparison in Persist and Compare. If only cross-branch evaluations exist, do NOT use them as the TREND baseline — the new evaluation starts a fresh history for this branch.
 
 ---
 
@@ -466,16 +498,16 @@ After producing the completion summary, persist the evaluation and compare again
 - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
 - Create `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/` if it doesn't exist
 - Write evaluation file as `{YYYY-MM-DD}.md` (if a file for today already exists, append counter: `-2`, `-3`)
-- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Discovery step 1)
+- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `git_branch` (the branch name detected in Discovery step 5 — always quote the value as a YAML string to handle special characters, e.g. `git_branch: "feature/foo"` or `git_branch: "detached:abc1234"`), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Discovery step 1)
 - In the body, include: all findings grouped by severity (each as `- [SEVERITY] (confidence: N/10) file — description`), top 3 recommendations, shadow path summary per agent, and model upgrade candidates
 - On write failure: warn and continue — never block on persistence failure
 
-**2. Compare against previous evaluation (if one exists):**
-- Load the most recent evaluation file BEFORE today's from the same project directory
-- Produce the TREND block appended after the completion summary:
+**2. Compare against previous same-branch evaluation (if one exists):**
+- From the same-branch set (as determined in Discovery step 5), find the most recent evaluation file BEFORE today's. This is the same-branch `previous`. Do NOT use cross-branch evaluations as the comparison baseline — ever.
+- If a same-branch `previous` exists, produce the TREND block appended after the completion summary:
 
 ```
-TREND (vs. [previous date])
+TREND (branch: `[current_branch]` — vs. [previous date])
 +--------------------------------------------------------------------+
 | Dimension                | Before → After | Delta | Note            |
 |--------------------------|----------------|-------|-----------------|
@@ -494,9 +526,9 @@ TREND (vs. [previous date])
 +--------------------------------------------------------------------+
 ```
 
-- For "past recommendations addressed": compare today's findings against the previous evaluation's top 3 recommendations. If a recommendation's corresponding finding no longer appears, mark it as addressed.
+- For "past recommendations addressed": compare today's findings against the same-branch previous evaluation's top 3 recommendations. If a recommendation's corresponding finding no longer appears, mark it as addressed.
 - Any REGRESSION (dimension score dropped) gets called out with a 1-line note explaining the likely cause based on the findings diff.
-- If no previous evaluation exists, skip the TREND block entirely.
+- If this is the first evaluation on the current branch (no same-branch `previous` exists), skip the TREND block entirely. If cross-branch evaluations exist, append a one-line note: "No prior history on `[current_branch]`. [N] evaluations from other branches are on file — request a cross-branch comparison explicitly if useful."
 
 ---
 
