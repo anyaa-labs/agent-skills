@@ -26,6 +26,11 @@ Long-running agent sessions accumulate context indefinitely with no checkpoint o
 
 **What to look for:** Any mechanism for context resets — periodic summarization, checkpoint-and-restart, structured handoff artifacts, or conversation compaction.
 
+### 1.5 No Explicit Cache Boundary
+System prompt is treated as monolithic — no static/dynamic split. Every call recomputes the full prompt. Tool description text edits (77% of cache busts in production) flush the entire shared cache with no isolation. For high-volume systems, this is a direct cost multiplier.
+
+**What to look for:** Any mechanism for separating stable content (tool schemas, system identity, behavioral rules) from per-call dynamic content (session state, date, user context). Absence of this distinction means every tool description edit is paid in full on the next call.
+
 ## Pass 2 — Important
 
 ### 2.1 "Just in Case" Context
@@ -49,6 +54,11 @@ Context is assembled once at the start and never updated. For multi-step tasks, 
 The conversation has natural phase boundaries (discovery, planning, execution, confirmation) where context needs shift, but these boundaries are not used for compaction. Context from completed phases remains at full fidelity, competing for attention with the current phase.
 
 **What to look for:** Identify conversation phases — do information needs change between them? After a user confirms a plan, are the raw discovery results (search outputs, candidate lists, rejected options) still in context at full size? Phase transitions are natural compaction points: summarize completed phases into their decisions and discard the reasoning artifacts.
+
+### 2.7 No Memory Tier Design for Persistent Agents
+For agents intended to run across multiple sessions or maintain long-running state: no cross-session persistence, no eviction policy, no consolidation pass. In-session state only. Memory either grows unbounded or resets completely on session end. Neither is acceptable for agents that accumulate context over time.
+
+**What to look for:** Any mechanism for persisting agent state between sessions (files, databases), with an eviction or summarization strategy to prevent unbounded growth. For long-running agents, "save everything" and "reset every session" are both wrong — what is needed is structured accumulation with selective pruning.
 
 ## Pass 3 — Minor
 

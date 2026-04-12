@@ -39,8 +39,8 @@ Cannot answer basic operational questions: How many agent invocations per day? W
 ### 2.2 Raw Exception Traces to Users
 Error messages shown to users contain raw exception traces, internal file paths, or model names. Exposes implementation details and provides a poor user experience.
 
-### 2.3 No Retry Strategy
-LLM calls that fail are not retried, or are retried without backoff (hammering a rate-limited API).
+### 2.3 Flat or Missing Recovery Strategy
+Flat retry (same context, same model, same prompt, N times) is not a recovery strategy — it is a loop. Recovery must be layered: same-context retry first, then pruned-context retry, then model fallback, then user escalation. Circuit breakers must be explicit: max 3 consecutive attempts, 20 total, to prevent runaway cost. Recovery should be invisible to the user while it is running — surface only if all layers fail.
 
 ### 2.4 No Request Tracing
 Cannot trace a user's request through the agent pipeline. When a user reports "the agent gave me a wrong answer," you cannot reconstruct what happened.

@@ -274,6 +274,7 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 16. **The Injection Surface** — Every piece of external content an agent reads is a potential program waiting to execute inside it. Natural language is simultaneously code and data for LLMs; the model cannot reliably tell the difference. Map your injection surface the same way you map your context budget: what external sources does this agent read? what tools are available when it reads them? the overlap is your attack surface. Containment comes from architecture (Plan-Then-Execute, Dual LLM quarantine), not from the model's training.
 
+
 ---
 
 ## AUDIT Mode

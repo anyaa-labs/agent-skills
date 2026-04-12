@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0] — 2026-04-12
+
+### Added
+- **3 new lessons** (L11–13) derived from Claude Code's production architecture: cache as load-bearing infrastructure, structural tool restriction over instructed restriction, and memory curation over accumulation.
+- **2 new cognitive patterns** (P14–15): The Cache Boundary (static/dynamic prompt split as a first-class architectural decision) and The Recovery Ladder (layered recovery with explicit circuit breakers).
+- `context-management.md` checklist: 1.5 No Explicit Cache Boundary (Critical), 2.7 No Memory Tier Design for Persistent Agents (Important).
+- `production-readiness.md` checklist: 2.3 expanded from flat retry advisory to full Recovery Ladder pattern with circuit breaker thresholds (3 consecutive, 20 total).
+- `multi-agent.md` checklist: 2.6 No Cache-Aware Fork Design (Important), 2.7 Safety-Critical Subagents Rely on Instruction Rather Than Structural Restriction (Important).
+- `tool-design.md` checklist: 2.6 Description Omits Anti-Patterns and Cross-References (Important).
+
+### Changed
+- Frontmatter description updated: "10 lessons" → "13 lessons", "13 cognitive patterns" → "15 cognitive patterns".
+
 ## [0.4.0] — 2026-04-09
 
 ### Changed

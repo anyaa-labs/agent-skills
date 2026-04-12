@@ -45,6 +45,11 @@ Tool responses include internal IDs, timestamps, metadata, or debug info the age
 ### 2.5 Schema-Shaped Instead of Task-Shaped
 Tools mirror the database schema (`create_user`, `create_event`, `create_notification`) instead of the agent's task (`onboard_new_customer`). Forces the agent to orchestrate multi-step sequences that could be a single tool call.
 
+### 2.6 Description Omits Anti-Patterns and Cross-References
+The description explains what the tool does but not: (a) what it must NOT do ("NEVER call this before verifying X"), (b) when to use a different tool instead ("if you need Y, use tool Z"), or (c) how this tool relates to adjacent tools. Anti-patterns and cross-references are as important as the primary description. Without them, the agent learns only the happy path.
+
+**What to look for:** Tool descriptions that describe capabilities but not constraints, exclusions, or tool-selection guidance. The fix: encode anti-patterns as "NEVER..." rules, encode cross-references as "When X, use Y instead" clauses, and encode ordering constraints as "Only call after X" statements.
+
 ## Pass 3 — Minor
 
 ### 3.1 Inconsistent Naming
