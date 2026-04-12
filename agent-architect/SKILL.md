@@ -1,6 +1,6 @@
 ---
 name: agent-architect
-version: 0.4.0
+version: 0.5.1
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 7-dimension scoring and
@@ -9,8 +9,8 @@ description: |
   focused design questions). Persists evaluation history to track
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
-  new agent files, or skill version updates. Incorporates 10 lessons from Anthropic's
-  engineering blog and 13 cognitive patterns from production agent systems. Use when
+  new agent files, or skill version updates. Incorporates 13 lessons from Anthropic's
+  engineering blog and 15 cognitive patterns from production agent systems. Use when
   asked to "review my agent", "evaluate my prompts", "audit my multi-agent system",
   "design an agent", "evolve my agent", "should I add", "which model for",
   "brainstorm", "help me think through", or "is my agent architecture good".
@@ -268,6 +268,12 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 13. **Model-Prompt Fit** — A prompt optimized for one model may actively harm another. XML tags help Claude but waste tokens on GPT. Few-shot helps GPT-4.1 but degrades DeepSeek R1. System prompts are critical for Claude but should be avoided entirely for DeepSeek R1. When you see a prompt, ask: was this written for the model that will run it?
 
+14. **The Cache Boundary** — Before writing a single tool description, decide where the static/dynamic prompt split goes. Everything static is cached across calls; everything dynamic recomputes on every turn. Tool descriptions crossing the boundary bust the entire shared cache. This is not a performance concern — it is an architectural one. The moment you change the prose on a single tool description, you pay full input cost for all tool schemas on that call.
+
+15. **The Recovery Ladder** — Layer recovery cheap-to-expensive: same-context retry first, then pruned-context retry, then model fallback, then escalate to user. Circuit breakers must be explicit: max 3 consecutive attempts, 20 total. Suppress recovery from the user while it runs — a user-visible "retrying..." on every failure is not recovery, it is failure theater. A single flat "retry 3 times" is not a recovery strategy.
+
+16. **The Injection Surface** — Every piece of external content an agent reads is a potential program waiting to execute inside it. Natural language is simultaneously code and data for LLMs; the model cannot reliably tell the difference. Map your injection surface the same way you map your context budget: what external sources does this agent read? what tools are available when it reads them? the overlap is your attack surface. Containment comes from architecture (Plan-Then-Execute, Dual LLM quarantine), not from the model's training.
+
 ---
 
 ## AUDIT Mode
@@ -306,11 +312,12 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 2. Read `checklists/tool-design.md` — apply against all tool definitions and function schemas
 3. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
 4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
+5. Read `checklists/security.md` — apply against all agent input/output channels, tool access scope, credential handling, and multi-agent trust boundaries
 
 **Apply conditionally:**
-5. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
-6. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
-7. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
+6. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
+7. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
+8. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -438,6 +445,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | Eval Infrastructure | 1.0x | Generator-evaluator separated, concrete rubrics, regression suite, cost tracking | Manual testing only. "We run it and check." | No evaluation of any kind. |
 | Production Readiness | 1.5x | Graceful degradation, cost alerts, rate limiting, observability, helpful errors | Happy path works. Failures produce 500 errors. Basic logging. | Demo-quality only. Breaks on first real user. |
 | Model Awareness | 1.0x | Correct model for each role, model-specific prompt patterns, structured output enforcement, known failure modes mitigated, harness components marked for model-upgrade review | Using models but no model-specific optimization. Generic prompts applied to all models. | Wrong model for role, no structured output enforcement, known failure modes unmitigated, prompt format mismatched to model. |
+| Agent Security | 1.5x | Rule of Two satisfied; injection-resistant architectural pattern (Plan-Then-Execute or Dual LLM) for external content; task-scoped credentials; sandboxed execution; audit trail present | Rate limiting and output validation present but no injection containment architecture; processes untrusted content with unrestricted tool access | No security measures; agent processes untrusted external content with full tool access and live credentials in the same context; no audit trail |
 
 **Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture and Production Readiness count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
@@ -468,6 +476,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 5. Eval Infrastructure     | N/10  | [1-line summary]              |
 | 6. Production Readiness    | N/10  | [1-line summary]              |
 | 7. Model Awareness         | N/10  | [1-line summary]              |
+| 8. Agent Security          | N/10  | [1-line summary]              |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -812,7 +821,7 @@ Every question follows this structure:
 
 ## Principles Reference
 
-These 10 lessons from Anthropic's engineering blog inform every evaluation:
+These 13 lessons from Anthropic's engineering blog and production code inform every evaluation:
 
 1. Start simple. Add complexity only when it demonstrably helps.
 2. Separate the agent doing the work from the agent judging it.
@@ -824,3 +833,7 @@ These 10 lessons from Anthropic's engineering blog inform every evaluation:
 8. Return high-signal tool responses, strip noise.
 9. Write tool descriptions like docs for a junior developer.
 10. Re-examine your harness when a new model ships.
+11. Cache is load-bearing infrastructure. Design the static/dynamic prompt boundary before writing any content. Tool description prose is the primary cache-bust vector — 77% of cache misses come from text edits to existing schemas, not from adding or removing tools.
+12. Restrict tools structurally, not by instruction alone. A read-only agent that has no write tools is correct by construction. An agent instructed not to write can still be prompted into doing so.
+13. Curate memory; don't hoard. Memory without active eviction becomes noise. Design for accumulation and pruning together — "look only for things you already suspect matter."
+14. Assume injection succeeds. Design so that a successful injection cannot cause catastrophic outcomes. Filters and classifier layers reduce probability; architecture (sandboxing, least privilege, the Rule of Two) contains blast radius. The question is not "can an attacker inject?" but "what can they do if they do?"
