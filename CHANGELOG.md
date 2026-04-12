@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] — 2026-04-12
+
+### Added
+- `production-readiness.md` checklist: 1.6 Credentials Co-Located with Code Execution Environment (Critical) — from Anthropic's Managed Agents engineering post. Flags any agent that executes untrusted code in the same environment where credentials are present. Includes structural fix patterns (resource-bundled auth, external vault + proxy). Suppressed for agents with no code execution surface.
+
 ## [0.5.0] — 2026-04-12
 
 ### Added

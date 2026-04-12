@@ -29,6 +29,11 @@ LLM-generated content (text, JSON, code, URLs, emails) is written directly to a 
 ### 1.5 No Cost Controls
 No mechanism to detect or prevent runaway costs. No daily/weekly spend alerts. No per-invocation cost cap. A prompt regression that doubles token usage is invisible until the bill arrives.
 
+### 1.6 Credentials Co-Located with Code Execution Environment
+The agent runs untrusted code or user-supplied inputs (via Bash, a sandbox, eval, or equivalent) in the same environment where credentials — API keys, access tokens, database passwords — are present. A prompt injection attack only needs to convince the agent to read its own environment to exfiltrate them. Once an attacker has those tokens, they can spawn unrestricted sessions and delegate work to them.
+
+**What to look for:** Any path where (a) the agent executes code and (b) credentials are available as environment variables, files, or in-process config within that same execution scope. The structural fix: credentials must not enter the execution environment. Two patterns work: bundle auth into the resource during initialization (e.g., clone a git repo with its token wired into the remote — subsequent push/pull work without the agent ever handling the token), or hold credentials in an external vault and proxy tool calls through it (the agent calls the proxy; the proxy fetches credentials and makes the external call; the harness is never made aware of any credentials).
+
 ## Pass 2 — Important
 
 ### 2.1 No Observability
@@ -67,6 +72,7 @@ No tracking of which features users actually use, which queries fail most often,
 - Pre-production prototypes explicitly labeled as such (note as advisory instead).
 - Internal tools with <5 users where the operator IS the developer.
 - Systems where cost is negligible (<$10/month) and blast radius is low.
+- Finding 1.6: agents with no code execution surface (no Bash, no eval, no sandbox). If the agent cannot run code, credential co-location is not exploitable via this path.
 
 ## Confidence Calibration
 
