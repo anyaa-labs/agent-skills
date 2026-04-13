@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.2] — 2026-04-13
+
+### Added
+- **Agent Security** as 8th audit dimension (weight 1.5x, always applied). Backed by research from OWASP LLM Top 10 2025, Google DeepMind CaMeL, Anthropic browser agent research, Meta AI Rule of Two, Simon Willison, Palo Alto Unit42, and Elastic Security Labs.
+- `checklists/security.md`: 13 findings across 3 severity passes.
+  - Pass 1 (Critical): Rule of Two violation, inter-agent trust exploitation (82.4% success rate), credential co-location, MCP tool description integrity, complete exfiltration path (filesystem + network combined).
+  - Pass 2 (Important): no injection-resistant architectural pattern (Plan-Then-Execute, Dual LLM, Map-Reduce, CaMeL), excessive agency (OWASP LLM06), memory/RAG poisoning, denial-of-wallet, LLM output passed to downstream systems without validation.
+  - Pass 3 (Minor): no audit trail, system prompt leakage risk, missing Unicode/injection sanitization.
+- **Pattern 16: The Injection Surface** — maps external content sources against available tools as the primary attack surface analysis lens.
+- **Principle 14**: "Assume injection succeeds. Design so that a successful injection cannot cause catastrophic outcomes."
+
 ## [0.5.1] — 2026-04-12
 
 ### Added
