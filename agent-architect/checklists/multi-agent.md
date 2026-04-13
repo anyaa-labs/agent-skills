@@ -41,6 +41,16 @@ Simple requests go through the full multi-agent pipeline even when a single agen
 ### 2.5 Shared Mutable State
 Multiple agents read and write to the same state (database, file, variable) without coordination. Race conditions, stale reads, or conflicting writes.
 
+### 2.6 No Cache-Aware Fork Design
+Forked subagents reconstruct the system prompt independently instead of inheriting from the parent. This breaks the cache sharing that justifies forking in the first place. If a fork's prompt bytes differ from the parent's, the cache busts for every child invocation. The entire cost benefit of forking is eliminated.
+
+**What to look for:** When subagents are spawned from a parent agent, does the child receive the parent's compiled prompt context, or does it reconstruct from scratch? Reconstruction breaks cache sharing. Inheritance preserves it.
+
+### 2.7 Safety-Critical Subagents Rely on Instruction Rather Than Structural Restriction
+Read-only or audit subagents are told not to modify files via a prompt instruction rather than by having no write tools. Instructions can be bypassed by prompt injection or adversarial inputs. Structural restriction — giving the agent no write tools at all — cannot.
+
+**What to look for:** Any subagent whose correctness depends on not taking destructive actions (read-only auditors, verifiers, explorers). Check the tool list: if it has write tools and a prompt instruction not to use them, flag it. The correct design is no write tools in the allowed-tools list.
+
 ## Pass 3 — Minor
 
 ### 3.1 Unclear Agent Naming
