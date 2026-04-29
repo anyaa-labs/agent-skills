@@ -1,22 +1,24 @@
 ---
 name: agent-architect
-version: 0.5.2
+version: 0.6.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 7-dimension scoring and
+  design. Three modes: AUDIT (full system evaluation with 9-dimension scoring and
   cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
   (architecture thinking partner — new systems, existing system evolution, and
   focused design questions). Persists evaluation history to track
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
-  new agent files, or skill version updates. Incorporates 13 lessons from Anthropic's
-  engineering blog and 15 cognitive patterns from production agent systems. Use when
-  asked to "review my agent", "evaluate my prompts", "audit my multi-agent system",
-  "design an agent", "evolve my agent", "should I add", "which model for",
-  "brainstorm", "help me think through", or "is my agent architecture good".
+  new agent files, or skill version updates. Incorporates 14 lessons from Anthropic's
+  engineering blog and 20 cognitive patterns from production agent systems, including
+  a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
+  validity windows, and eviction. Use when asked to "review my agent", "evaluate my
+  prompts", "audit my multi-agent system", "design an agent", "design my memory
+  system", "evolve my agent", "should I add", "which model for", "brainstorm",
+  "help me think through", or "is my agent architecture good".
   Proactively invoke when the
-  user shows agent code, prompt files, tool definitions, or multi-agent orchestration
-  and asks for feedback. (agent-skills)
+  user shows agent code, prompt files, tool definitions, multi-agent orchestration,
+  or persistent memory storage and asks for feedback. (agent-skills)
 allowed-tools:
   - Read
   - Grep
@@ -110,6 +112,15 @@ Before asking any questions, read the codebase to understand what exists.
    - Read the applicable profile for KNOWN and CACHED models
    - **Do NOT ask the user anything here.** Discovery is silent.
 
+2.6. **Detect memory and persistence (silent — no user interaction):**
+   - Glob for: `**/*memory*`, `**/*memor*`, `**/CLAUDE.md`, `**/preferences*`, `**/profile*`, `**/*.memories.json`
+   - Grep for SDK and framework markers: `mem0`, `letta`, `MemGPT`, `zep`, `langmem`, `graphiti`, `cognee`, `supermemory`, `pgvector`, `chroma`, `qdrant`, `weaviate`, `pinecone`, `memory_tool`, `tool: memory`
+   - Grep for stored-state shapes: `INSERT INTO.*memor`, `\.append\(.*memor`, JSON files holding accumulated user state, repeated string-concatenation of stored content into prompts
+   - Classify the storage type when found: **vector** (semantic similarity), **graph** (relational/temporal), **kv/file** (flat), **tiered** (Letta-style), **hybrid**, or **none**
+   - Note the dominant memory type expected for this product (semantic / episodic / procedural / mixed) based on the agent's job-to-be-done — this informs whether the storage choice fits the workload
+   - Output as a new line in the System Map: `Memory: [present (storage: vector/graph/kv/file/tiered/hybrid; dominant type: semantic/episodic/procedural/mixed)] / [absent]`
+   - This detection gates whether the Memory Architecture checklist runs in Deep Evaluation. If memory is absent, the dimension scores N/A and is excluded from the weighted average.
+
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
    - Count tools per agent
@@ -163,6 +174,7 @@ Models detected: [model1 (version), model2 (version), ...]
 Model awareness: [all known / N cached / N unknown]
 
 Orchestration: [single-agent / router / parallel / pipeline / none]
+Memory: [present (storage: <type>; dominant type: <type>) / absent]
 Eval infrastructure: [present / partial / absent]
 Tool count: N tools across M agents
 Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
@@ -274,6 +286,14 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 16. **The Injection Surface** — Every piece of external content an agent reads is a potential program waiting to execute inside it. Natural language is simultaneously code and data for LLMs; the model cannot reliably tell the difference. Map your injection surface the same way you map your context budget: what external sources does this agent read? what tools are available when it reads them? the overlap is your attack surface. Containment comes from architecture (Plan-Then-Execute, Dual LLM quarantine), not from the model's training.
 
+17. **Memory Type Discipline** — Preferences, facts, episodes, and procedures (CoALA's four types) have different write rules, different retrieval rules, and different eviction rules. A flat memory store conflates all four and makes contradiction inevitable: a one-week intent gets stored next to a forever-preference and the system cannot tell them apart. Before storing anything, classify it. The classification is part of the write operation, not metadata you add later.
+
+18. **Reconcile-on-Write** — Every memory write asks four questions, never one. Does this candidate fact ADD new information, UPDATE an existing one, DELETE (or supersede) a contradicted one, or NOOP because the information is already represented? Append-only is not a memory system; it is a log waiting to rot. Mem0's four-op reconciliation is the practical default; Zep/Graphiti's bi-temporal supersede is the rigorous version when historical state matters.
+
+19. **The Validity Window** — Every memory carries a validity window: `valid_from`, `valid_until` (or a TTL, or "indefinite" as a deliberate choice). Relative time — "this week", "today", "for summer" — is resolved to absolute timestamps at the moment of ingest, not stored verbatim. "Forever" is opt-in, not the default. The single most preventable failure mode in long-running memory is a one-time intent ossifying into an eternal rule because nobody asked when it should expire.
+
+20. **Eviction is a Feature** — Memory without eviction is noise. Design the pruning rule at the same time as the storage rule, not after the store has rotted. The rule can be TTL-based, decay-based, capacity-based, reflection-based (collapse cluster of episodes into one summary), or user-initiated — but it must exist explicitly. "We keep everything indefinitely" is a valid choice if it is a deliberate choice with a known cost; it is an anti-pattern if it is the default by neglect.
+
 
 ---
 
@@ -319,6 +339,7 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 6. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
 7. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
 8. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
+9. Read `checklists/memory-architecture.md` — **only if** Discovery step 2.6 detected memory or persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, or repeated string concatenation of stored content into prompts). For deeper background on taxonomy, frameworks, reconciliation, temporal handling, and failure modes, read `references/memory-systems.md` when a finding requires justification or when DESIGN mode is exploring a memory question.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -373,6 +394,7 @@ For every agent found in Discovery, produce a failure mode map. Analyze only fai
 - **REFUSAL** — skip for agents that only read/retrieve data (no action to refuse)
 - **LOOP** — skip for single-shot agents with no retry logic or iterative behavior
 - **ABANDONMENT** — skip for agents that complete in a single turn with no multi-step workflow
+- **STALE BELIEF** — only analyze for agents with persistent memory (Discovery step 2.6 detected memory). Skip otherwise — no memory means no stale belief is possible.
 
 For skipped modes, mark: "N/A — not possible given architecture ([reason])."
 
@@ -405,6 +427,13 @@ ABANDONMENT (agent stops mid-task)
   Detection:  [how would you know?]
   Mitigation: [checkpoint? resume? notification?]
   User sees:  [partial work? lost progress?]
+  Status:     HANDLED / PARTIAL / UNHANDLED
+
+STALE BELIEF (agent acts on once-true memory that is no longer true)
+  Trigger:    [which memory category is most prone? — relative-time entries, superseded preferences, expired one-shot intents]
+  Detection:  [validity windows? user contradiction? abstention metric?]
+  Mitigation: [reconcile-on-write? TTL/expiry sweep? bi-temporal supersede? user audit UX?]
+  User sees:  [agent confidently uses outdated rule? — distinct from hallucination because the source was real]
   Status:     HANDLED / PARTIAL / UNHANDLED
 ════════════════════════════════════════
 ```
@@ -447,8 +476,9 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | Production Readiness | 1.5x | Graceful degradation, cost alerts, rate limiting, observability, helpful errors | Happy path works. Failures produce 500 errors. Basic logging. | Demo-quality only. Breaks on first real user. |
 | Model Awareness | 1.0x | Correct model for each role, model-specific prompt patterns, structured output enforcement, known failure modes mitigated, harness components marked for model-upgrade review | Using models but no model-specific optimization. Generic prompts applied to all models. | Wrong model for role, no structured output enforcement, known failure modes unmitigated, prompt format mismatched to model. |
 | Agent Security | 1.5x | Rule of Two satisfied; injection-resistant architectural pattern (Plan-Then-Execute or Dual LLM) for external content; task-scoped credentials; sandboxed execution; audit trail present | Rate limiting and output validation present but no injection containment architecture; processes untrusted content with unrestricted tool access | No security measures; agent processes untrusted external content with full tool access and live credentials in the same context; no audit trail |
+| Memory Architecture | 1.0x | Typed memory (preferences/facts/episodes/procedures); reconcile-on-write with ADD/UPDATE/DELETE/NOOP (or bi-temporal supersede); validity windows resolved to absolute timestamps on ingest; per-entity scoping where entities exist; eviction policy explicit; provenance tracked; user audit/edit/delete UX; LongMemEval-style regression suite | Single-typed store (e.g., flat preferences table) with simple last-write-wins; relative time stored verbatim with no validity window; user-only scope when entities matter; ad-hoc eviction; no memory-specific eval | Flat append-only store; no reconciliation; no typing; no validity windows; no eviction; no user control — every contradiction and "this week" entry persists forever |
 
-**Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture and Production Readiness count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
+**Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture, Production Readiness, and Agent Security count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
 **Maturity Levels:**
 - **8.0-10.0:** Production-grade. Ship it.
@@ -478,6 +508,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 6. Production Readiness    | N/10  | [1-line summary]              |
 | 7. Model Awareness         | N/10  | [1-line summary]              |
 | 8. Agent Security          | N/10  | [1-line summary]              |
+| 9. Memory Architecture     | N/10 or N/A | [1-line summary or "Not applicable — no persistent memory"] |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -528,6 +559,8 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 | Eval Infrastructure      | N → N          | ↑/→/↓ | [1-line why]    |
 | Production Readiness     | N → N          | ↑/→/↓ | [1-line why]    |
 | Model Awareness          | N → N          | ↑/→/↓ | [1-line why]    |
+| Agent Security           | N → N          | ↑/→/↓ | [1-line why]    |
+| Memory Architecture      | N → N          | ↑/→/↓ | [1-line why]    |
 +--------------------------------------------------------------------+
 | Overall                  | N.N → N.N      | ↑/→/↓ |                 |
 +--------------------------------------------------------------------+
@@ -680,11 +713,13 @@ For the chosen approach, produce:
 
 3. **Context management strategy** — token budget, what goes in context, what is retrieved on demand, reset strategy for long tasks.
 
-4. **Failure mode map** — for each agent in the design, the 4 failure paths (hallucination, refusal, loop, abandonment) with mitigations.
+4. **Failure mode map** — for each agent in the design, the failure paths (hallucination, refusal, loop, abandonment, plus stale-belief if the system has memory) with mitigations.
 
-5. **Evaluation plan** — what to eval, rubric criteria (concrete and gradable), generator-evaluator separation, recommended eval dataset size.
+5. **Evaluation plan** — what to eval, rubric criteria (concrete and gradable), generator-evaluator separation, recommended eval dataset size. If the system has persistent memory, include a memory-specific eval (LongMemEval-style: extraction, multi-session reasoning, temporal reasoning, knowledge updates, abstention).
 
 6. **Cost model** — estimated tokens per invocation, estimated cost at stated volume, what the biggest cost driver is.
+
+7. **Memory architecture** — *include this section only if the system needs persistence across turns or sessions.* Specify: which CoALA types (preferences/facts/episodes/procedures) the system stores; storage choice (flat KV / vector / graph / tiered / file-based / hybrid) and why; scope and addressability tuple (user_id × entity_id × scope_id × …); write policy (hot-path vs. background, what triggers a write, extraction step); reconciliation policy (ADD/UPDATE/DELETE/NOOP rules, or bi-temporal supersede if historical state matters); validity-window defaults per memory type, with relative-time resolved at ingest; read policy (always-load / retrieve-on-demand / tool-call-to-recall) and retrieval scoring (relevance × recency × importance); eviction rule; user audit/edit/delete UX; provenance fields. For deeper guidance on any of these, read `references/memory-systems.md`.
 
 ### DESIGN: Implementation Checklist
 
@@ -715,7 +750,7 @@ When working with an existing system, operate as a thinking partner, not an eval
 5. End each response with a follow-up question or decision prompt. The user can switch topics freely.
 6. Every recommendation must be concrete: not "it depends" but "if X, do Y; if Z, do W."
 
-**Design topics:** Agent topology, model selection, tool design, context strategy, evaluation approach, cost optimization, failure handling, harness lifecycle. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`.
+**Design topics:** Agent topology, model selection, tool design, context strategy, memory architecture, evaluation approach, cost optimization, failure handling, harness lifecycle, agent security. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`. For memory questions ("should I add memory?", "how should my memory work?", "my memory store is full of contradictions", "users complain that the agent forgets / remembers stale things"), read `references/memory-systems.md` and walk the user through the type / storage / scope / write / reconcile / read / evict decision tree.
 
 **Decision Log** — When the conversation produces 3+ concrete decisions, offer to produce a summary:
 ```
@@ -822,7 +857,7 @@ Every question follows this structure:
 
 ## Principles Reference
 
-These 13 lessons from Anthropic's engineering blog and production code inform every evaluation:
+These 14 lessons from Anthropic's engineering blog and production code inform every evaluation:
 
 1. Start simple. Add complexity only when it demonstrably helps.
 2. Separate the agent doing the work from the agent judging it.
@@ -836,5 +871,5 @@ These 13 lessons from Anthropic's engineering blog and production code inform ev
 10. Re-examine your harness when a new model ships.
 11. Cache is load-bearing infrastructure. Design the static/dynamic prompt boundary before writing any content. Tool description prose is the primary cache-bust vector — 77% of cache misses come from text edits to existing schemas, not from adding or removing tools.
 12. Restrict tools structurally, not by instruction alone. A read-only agent that has no write tools is correct by construction. An agent instructed not to write can still be prompted into doing so.
-13. Curate memory; don't hoard. Memory without active eviction becomes noise. Design for accumulation and pruning together — "look only for things you already suspect matter."
+13. Curate memory; don't hoard. Memory without active eviction becomes noise. Design for accumulation and pruning together — "look only for things you already suspect matter." Memory has types (preferences / facts / episodes / procedures, à la CoALA), each with its own write rules; reconcile-on-write (ADD / UPDATE / DELETE / NOOP) instead of appending; resolve relative time to absolute timestamps at ingest. Deep treatment in `references/memory-systems.md`.
 14. Assume injection succeeds. Design so that a successful injection cannot cause catastrophic outcomes. Filters and classifier layers reduce probability; architecture (sandboxing, least privilege, the Rule of Two) contains blast radius. The question is not "can an attacker inject?" but "what can they do if they do?"

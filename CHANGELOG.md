@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0] — 2026-04-29
+
+### Added
+- **Memory Architecture** as 9th audit dimension (weight 1.0x, applied conditionally when Discovery detects persistent memory). Backed by research from Anthropic (Memory tool, context engineering), OpenAI (ChatGPT memory architecture), Mem0 (two-phase pipeline + ADD/UPDATE/DELETE/NOOP), Zep/Graphiti (bi-temporal knowledge graph), Letta/MemGPT, LangMem (hot-path vs. background), A-MEM (zettelkasten note evolution), Park 2023 (Generative Agents — relevance × recency × importance), CoALA framework, LongMemEval, LoCoMo, Drew Breunig (context rot), Simon Willison (dossier failure), Kore.ai (memory drift).
+- `checklists/memory-architecture.md`: 16 findings across 3 severity passes.
+  - Pass 1 (Critical): no memory typing, append-only without reconciliation, relative time stored as eternal truth, no eviction policy, memory-poisoning surface (no trust boundary).
+  - Pass 2 (Important): indiscriminate writes (no extraction step), hot-path-only writes (no background option), pure-similarity retrieval (no recency/importance weighting), no abstention on contradiction, user-only scope when entities matter, no user audit/edit/delete UX, no memory evaluation.
+  - Pass 3 (Minor): inconsistent namespace conventions, no deletion cascade, missing provenance fields, no soft-delete or versioning.
+- `references/memory-systems.md`: 13-section design textbook covering CoALA's four memory types (working / episodic / semantic / procedural), storage choices (KV / vector / graph / tiered / file / hybrid), framework profiles (Anthropic memory tool, OpenAI Bio, Mem0, Letta, Zep/Graphiti, LangMem, A-MEM, Generative Agents, Titans), write/read/reconcile/temporal/scope/eviction policies, six failure modes (Context Poisoning/Distraction/Confusion/Clash/Collapse + Memory Drift), evaluation (LongMemEval, LoCoMo, MemBench), anti-patterns, and inline citations.
+- **Pattern 17: Memory Type Discipline** — preferences, facts, episodes, and procedures have different write rules; classify before storing.
+- **Pattern 18: Reconcile-on-Write** — every write asks ADD/UPDATE/DELETE/NOOP; append-only is not a memory system.
+- **Pattern 19: The Validity Window** — every memory carries valid_from/valid_until (or TTL, or "indefinite" as a deliberate choice); relative time is resolved to absolute on ingest.
+- **Pattern 20: Eviction is a Feature** — design the pruning rule alongside the storage rule; "we keep everything" is a choice with a known cost, not a default.
+- **Failure mode: STALE BELIEF** — fifth failure path in the FAILURE MODE MAP, applicable only to agents with persistent memory. Distinct from hallucination because the source was once real.
+- **Discovery step 2.6** — silent detection of memory and persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, repeated string concatenation of stored content into prompts). Classifies storage type and emits a Memory line in the System Map.
+- **DESIGN-mode topic** — "Memory architecture" added to the Design Conversation Loop topics. Greenfield Detailed Design now includes a Memory architecture section when the system needs persistence, covering CoALA types, storage choice, scope, write/reconcile/read/evict policies, validity windows, and a memory-specific evaluation plan.
+
+### Changed
+- Frontmatter description: "7-dimension scoring" → "9-dimension scoring", "13 lessons" → "14 lessons", "15 cognitive patterns" → "20 cognitive patterns". Added "design my memory system" to invocation triggers.
+- Lesson 13 (Curate memory; don't hoard) expanded to name CoALA's four memory types, ADD/UPDATE/DELETE/NOOP reconciliation, and absolute-timestamp ingest. Defers depth to `references/memory-systems.md`.
+- Overall Maturity Score note corrected: Agent Security is also weighted 1.5x (was missing from the prior 0.5.2 release).
+- TREND comparison table now includes Agent Security and Memory Architecture rows (Agent Security was missing in 0.5.2).
+
 ## [0.5.2] — 2026-04-13
 
 ### Added
