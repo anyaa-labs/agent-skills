@@ -55,16 +55,28 @@ Every skill should include the update check preamble at the top of its SKILL.md 
 
 ### Preamble template for new skills
 
-Copy the preamble from `agent-architect/SKILL.md` and replace `agent-architect` with your skill name in the `readlink` path:
+Copy the preamble from `agent-architect/SKILL.md`. It resolves the installed skill from either Claude Code (`~/.claude/skills`) or Codex (`~/.agents/skills`) before running the shared helper scripts.
 
 ```bash
-bash "$(dirname "$(readlink "$HOME/.claude/skills/YOUR-SKILL-NAME")")/bin/update-check" 2>/dev/null || true
+SKILL_LINK=""
+for candidate in "$HOME/.claude/skills/YOUR-SKILL-NAME" "$HOME/.agents/skills/YOUR-SKILL-NAME"; do
+  [ -e "$candidate" ] || continue
+  SKILL_LINK="$candidate"
+  break
+done
+[ -n "$SKILL_LINK" ] && bash "$(dirname "$(readlink "$SKILL_LINK")")/bin/update-check" 2>/dev/null || true
 ```
 
 The upgrade command follows the same pattern:
 
 ```bash
-bash "$(dirname "$(readlink "$HOME/.claude/skills/YOUR-SKILL-NAME")")/bin/do-upgrade"
+SKILL_LINK=""
+for candidate in "$HOME/.claude/skills/YOUR-SKILL-NAME" "$HOME/.agents/skills/YOUR-SKILL-NAME"; do
+  [ -e "$candidate" ] || continue
+  SKILL_LINK="$candidate"
+  break
+done
+[ -n "$SKILL_LINK" ] && bash "$(dirname "$(readlink "$SKILL_LINK")")/bin/do-upgrade"
 ```
 
 ## Adding New Skills

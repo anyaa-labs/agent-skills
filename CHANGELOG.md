@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.1] — 2026-05-13
+
+### Added
+- Codex compatibility notes in `agent-architect/SKILL.md`, including an explicit mapping from Claude Code tool names to Codex equivalents for shell access, subagents, user questions, and web search.
+
+### Changed
+- `setup` now installs skills into both `~/.claude/skills` and `~/.agents/skills`.
+- `agent-architect/SKILL.md` update-check preamble now resolves the installed skill from either Claude Code or Codex before running `bin/update-check` and `bin/do-upgrade`.
+- Discovery guidance in `agent-architect/SKILL.md` now reads `AGENTS.md` and `GEMINI.md` alongside `CLAUDE.md` so architecture reviews are not coupled to a single agent environment.
+- README, CONTRIBUTING, and package metadata now describe the repo as supporting both Claude Code and Codex.
+
 ## [0.6.0] — 2026-04-29
 
 ### Added

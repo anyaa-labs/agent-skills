@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
-# agent-skills setup — register all skills with Claude Code
+# agent-skills setup — register all skills with Claude Code and Codex
 set -e
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILLS_DIR="$HOME/.claude/skills"
+SKILLS_DIRS=(
+  "$HOME/.claude/skills"
+  "$HOME/.agents/skills"
+)
 
-mkdir -p "$SKILLS_DIR"
+for skills_dir in "${SKILLS_DIRS[@]}"; do
+  mkdir -p "$skills_dir"
+done
 
 installed=0
 for skill_dir in "$REPO_DIR"/*/; do
   [ -f "$skill_dir/SKILL.md" ] || continue
   skill_name="$(basename "$skill_dir")"
-  ln -snf "$skill_dir" "$SKILLS_DIR/$skill_name"
+  for skills_dir in "${SKILLS_DIRS[@]}"; do
+    ln -snf "$skill_dir" "$skills_dir/$skill_name"
+  done
   echo "  ✓ /$skill_name"
   installed=$((installed + 1))
 done
@@ -22,5 +29,10 @@ if [ "$installed" -eq 0 ]; then
 fi
 
 echo ""
-echo "Installed $installed skill(s) to $SKILLS_DIR"
-echo "Usage: type /<skill-name> in any Claude Code session."
+echo "Installed $installed skill(s) to:"
+for skills_dir in "${SKILLS_DIRS[@]}"; do
+  echo "  - $skills_dir"
+done
+echo "Usage:"
+echo "  Claude Code: type /<skill-name>"
+echo "  Codex: reference the skill by name in your request"
