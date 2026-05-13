@@ -1,6 +1,6 @@
 ---
 name: agent-architect
-version: 0.6.0
+version: 0.6.1
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 9-dimension scoring and
@@ -34,7 +34,13 @@ allowed-tools:
 On every invocation, before doing anything else, silently run this command:
 
 ```bash
-bash "$(dirname "$(readlink "$HOME/.claude/skills/agent-architect")")/bin/update-check" 2>/dev/null || true
+SKILL_LINK=""
+for candidate in "$HOME/.claude/skills/agent-architect" "$HOME/.agents/skills/agent-architect"; do
+  [ -e "$candidate" ] || continue
+  SKILL_LINK="$candidate"
+  break
+done
+[ -n "$SKILL_LINK" ] && bash "$(dirname "$(readlink "$SKILL_LINK")")/bin/update-check" 2>/dev/null || true
 ```
 
 **Interpret the output:**
@@ -43,12 +49,22 @@ bash "$(dirname "$(readlink "$HOME/.claude/skills/agent-architect")")/bin/update
   1. Tell the user a new version is available, showing the version numbers.
   2. Summarize the changelog entries as 3-5 user-facing bullets highlighting new capabilities, improvements, and fixes. Focus on value, not internal details.
   3. Ask the user: **"Would you like to update now?"** (use AskUserQuestion).
-  4. **If the user approves:** Run `bash "$(dirname "$(readlink "$HOME/.claude/skills/agent-architect")")/bin/do-upgrade"`. If output contains `UPGRADE_SUCCESS`, confirm the new version and continue with the user's original request. If `UPGRADE_FAILED`, tell the user the auto-upgrade failed and suggest they run `git pull` manually in the repo directory (shown in the update-check output as `REPO_DIR`), then proceed with the current version.
+  4. **If the user approves:** Re-resolve `SKILL_LINK` using the command above, then run `bash "$(dirname "$(readlink "$SKILL_LINK")")/bin/do-upgrade"`. If output contains `UPGRADE_SUCCESS`, confirm the new version and continue with the user's original request. If `UPGRADE_FAILED`, tell the user the auto-upgrade failed and suggest they run `git pull` manually in the repo directory (shown in the update-check output as `REPO_DIR`), then proceed with the current version.
   5. **If the user declines:** Proceed immediately with the current version. Do not mention the update again for the rest of this session.
 
 - **If no output or the command fails:** Proceed silently. Never mention the update check to the user.
 
 ---
+
+## Platform Tool Mapping
+
+This skill names Claude Code tools because that is the authoring convention. In Codex, use the platform equivalent:
+
+- `Read`, `Grep`, `Glob` -> native file and shell tools (typically `exec_command` with `rg`)
+- `Bash` -> `exec_command`
+- `Agent` -> `spawn_agent`, `wait_agent`, `close_agent`
+- `AskUserQuestion` -> ask the user directly, or `request_user_input` when it is available
+- `WebSearch` -> Codex web search tools
 
 # Agent Architect
 
@@ -91,7 +107,7 @@ Before asking any questions, read the codebase to understand what exists.
 
 1. **Find agent-related files:**
    - Use Glob to find: `**/*prompt*`, `**/*agent*`, `**/*system*message*`, `**/*tool*`, `**/SKILL.md`, `**/*.prompt`, `**/*harness*`, `**/*orchestrat*`
-   - Read CLAUDE.md, README, and any architecture docs
+   - Read `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README`, and any architecture docs
    - Check for eval/test infrastructure: `**/*eval*`, `**/*judge*`, `**/*rubric*`, `**/test*agent*`
 
 2. **Map the agent topology:**
@@ -113,7 +129,7 @@ Before asking any questions, read the codebase to understand what exists.
    - **Do NOT ask the user anything here.** Discovery is silent.
 
 2.6. **Detect memory and persistence (silent — no user interaction):**
-   - Glob for: `**/*memory*`, `**/*memor*`, `**/CLAUDE.md`, `**/preferences*`, `**/profile*`, `**/*.memories.json`
+   - Glob for: `**/*memory*`, `**/*memor*`, `**/CLAUDE.md`, `**/AGENTS.md`, `**/GEMINI.md`, `**/preferences*`, `**/profile*`, `**/*.memories.json`
    - Grep for SDK and framework markers: `mem0`, `letta`, `MemGPT`, `zep`, `langmem`, `graphiti`, `cognee`, `supermemory`, `pgvector`, `chroma`, `qdrant`, `weaviate`, `pinecone`, `memory_tool`, `tool: memory`
    - Grep for stored-state shapes: `INSERT INTO.*memor`, `\.append\(.*memor`, JSON files holding accumulated user state, repeated string-concatenation of stored content into prompts
    - Classify the storage type when found: **vector** (semantic similarity), **graph** (relational/temporal), **kv/file** (flat), **tiered** (Letta-style), **hybrid**, or **none**

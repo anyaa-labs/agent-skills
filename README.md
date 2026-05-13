@@ -1,6 +1,6 @@
 # agent-skills
 
-Claude Code skills for evaluating and designing multi-agent systems.
+Claude Code and Codex skills for evaluating and designing multi-agent systems.
 
 ## Skills
 
@@ -14,6 +14,8 @@ Senior architect review for agent systems, prompt engineering, and harness desig
 - **DESIGN** — Architect a new agent system from scratch. Produces system prompt drafts, tool specs, failure mode maps, eval plans, and implementation checklists.
 
 ## Install
+
+`./setup` installs each skill into both `~/.claude/skills` and `~/.agents/skills`.
 
 ```bash
 git clone git@github.com:YOUR_ORG/agent-skills.git ~/.claude/skills/agent-skills
@@ -31,11 +33,13 @@ cd ~/path/to/agent-skills
 
 ## Usage
 
-In any Claude Code session:
+In Claude Code:
 
 ```
 /agent-architect
 ```
+
+In Codex, once installed under `~/.agents/skills`, reference `agent-architect` by name in your request.
 
 The skill auto-detects your codebase and selects the appropriate mode. You can also be explicit:
 
