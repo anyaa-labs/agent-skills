@@ -51,6 +51,12 @@ Read-only or audit subagents are told not to modify files via a prompt instructi
 
 **What to look for:** Any subagent whose correctness depends on not taking destructive actions (read-only auditors, verifiers, explorers). Check the tool list: if it has write tools and a prompt instruction not to use them, flag it. The correct design is no write tools in the allowed-tools list.
 
+### 2.8 Advisor and Executor Roles Not Separated
+A high-cost/high-intelligence model is used for every turn even though only planning or review turns need it, or a cheap executor makes strategy decisions it should escalate.
+
+### 2.9 Handoff Omits State Ownership
+Subagents hand off prose summaries but not the concrete state owners: files changed, tools called, decisions made, rejected paths, verification status, and unresolved risks.
+
 ## Pass 3 — Minor
 
 ### 3.1 Unclear Agent Naming

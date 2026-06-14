@@ -26,6 +26,9 @@ There is no baseline to compare against. You cannot tell if a prompt change made
 
 **What to look for:** Stored eval results from previous runs, comparison scripts, or baseline scores checked into the repo.
 
+### 1.5 No Trace or Terminal-State Evaluation for Agents
+Evals score final text but not the tool-call trace, state mutations, approval decisions, artifact outputs, or final database/workspace state.
+
 ## Pass 2 — Important
 
 ### 2.1 Manual-Only Evals
@@ -42,6 +45,15 @@ Tool schemas can change without breaking any test. The agent's expectations abou
 
 ### 2.5 No Edge-Case Eval Coverage
 Evals only test the happy path. No eval cases for: empty input, malformed input, model refusal, tool failure, timeout, or adversarial input.
+
+### 2.6 No Repeated-Trial Reliability Metric
+Agent evals run each case once. They do not measure pass rate across repeated stochastic trials or report `pass^k` style reliability.
+
+### 2.7 Security and Utility Not Scored Separately
+The same score blends task success with safety behavior, hiding agents that complete tasks while violating prompt-injection, authorization, or approval constraints.
+
+### 2.8 No Modality-Specific Eval Cases
+Voice, image, video, realtime, or computer-use agents are evaluated only through text cases.
 
 ## Pass 3 — Minor
 
