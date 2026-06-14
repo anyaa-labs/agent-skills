@@ -9,9 +9,11 @@ Claude Code and Codex skills for evaluating and designing multi-agent systems.
 Senior architect review for agent systems, prompt engineering, and harness design.
 
 **Three modes:**
-- **AUDIT** — Full 7-dimension evaluation of an existing agent system. Scores prompt architecture, tool design, context management, multi-agent orchestration, eval infrastructure, production readiness, and model awareness. Produces a maturity score with prioritized recommendations.
+- **AUDIT** — Full 11-dimension evaluation of an existing agent system. Scores prompt architecture, tool design, context management, multi-agent orchestration, eval infrastructure, production readiness, model awareness, agent security, memory architecture, harness architecture, and multimodal architecture. Produces a maturity score with prioritized recommendations.
 - **REVIEW** — Focused teardown of a specific prompt, skill file, or tool definition. Line-by-line findings with confidence scores.
 - **DESIGN** — Architect a new agent system from scratch. Produces system prompt drafts, tool specs, failure mode maps, eval plans, and implementation checklists.
+
+The current agent-architect version is built for production AI systems, not just prompt review. It evaluates runtime API contracts, tool harness boundaries, MCP/tool governance, background task execution, trace-based evaluation, and voice/image/video surfaces when those modalities are present.
 
 ## Install
 

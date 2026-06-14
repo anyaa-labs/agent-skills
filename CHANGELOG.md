@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0] — 2026-06-14
+
+### Added
+- **Harness Architecture** as the 10th audit dimension (weight 1.5x, always applied), covering runtime API contracts, execution-loop ownership, tool governance, MCP boundaries, sandboxing, tracing, and deployment lifecycle.
+- **Multimodal Architecture** as the 11th audit dimension (weight 1.0x, conditionally applied when Discovery detects voice, image, video, screen, or live-media surfaces), covering modality routing, media safety, latency budgets, observability, and fallback UX.
+- `references/harness-engineering.md`, `references/multimodal-agents.md`, and `references/model-runtime-contracts-2026-06.md` as source-backed reference briefs for modern production agent systems.
+- Contract tests for package/SKILL version alignment, audit-dimension consistency, source-link coverage, runtime discovery fields, and model-profile provenance.
+- Cognitive patterns 21-26: Model Runtime Contract, Brain/Hands Boundary, Tool Loadout Beats Tool Hoarding, Trace Is the Unit of Evaluation, Modality Is an Attack Surface, and State Has an Owner.
+
+### Changed
+- Refreshed `model-profiles.md` around current runtime contracts, including OpenAI Responses/Agents, Anthropic Claude 4, Gemini 2.5, Llama 4, Mistral Medium 3, DeepSeek R1, and Cohere Command A.
+- Expanded model, context, tool, eval, security, production, and multi-agent checklists with runtime-state, MCP, live-media, trace-eval, sandbox, and tool-loadout findings.
+- Updated README and package metadata for the 0.7.0 production-agent architecture release.
+
 ## [0.6.1] — 2026-05-13
 
 ### Added
