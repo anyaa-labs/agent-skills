@@ -44,6 +44,12 @@ Unrestricted filesystem access alone is dangerous — an agent can read credenti
 
 **What to look for:** Agent code executing in the host environment without OS-level sandbox isolation (container, bubblewrap, seatbelt). No network egress allowlist restricting outbound connections to known domains. Agent running as a user account with full filesystem access. Code execution tools (`run_code`, `execute`, `bash`) that have visibility into the home directory or credential files AND can reach arbitrary network endpoints.
 
+### 1.6 Untrusted Data Can Influence Control Flow
+Untrusted retrieved content, external documents, media, or peer-agent output can change which tools are called, which recipients receive data, or which external actions are taken.
+
+### 1.7 MCP Authorization or Token Audience Not Verified
+HTTP MCP servers or remote tools use OAuth-style authorization but the client/server does not verify audience/resource binding or per-server token scope.
+
 ## Pass 2 — Important
 
 ### 2.1 No Injection-Resistant Architectural Pattern for External Content Processing
@@ -81,6 +87,12 @@ No spending caps, token budgets, or iteration limits prevent an adversarially cr
 LLM output is consumed by downstream APIs, databases, shell commands, or HTML renderers without schema validation or sanitization. A prompt injection that manipulates output format can produce SQL injection, command injection, path traversal, or XSS in downstream systems. The LLM's output is untrusted input to every downstream system.
 
 **What to look for:** LLM string output used directly as SQL arguments (not parameterized), shell command strings, file path components, or HTML content. No schema validation before passing LLM JSON output to APIs. No output sanitization step between LLM response and downstream consumer. Downstream systems that trust the agent's output format is well-formed.
+
+### 2.6 No Runtime Action Interception
+High-risk tool calls are not intercepted before execution for allow/warn/block/review decisions based on command, destination, data flow, and blast radius.
+
+### 2.7 Visual or Audio Prompt Injection Surface Untested
+The system accepts images, screenshots, video, audio, or transcripts but has no adversarial modality test cases or containment pattern.
 
 ## Pass 3 — Minor
 

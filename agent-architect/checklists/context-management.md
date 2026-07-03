@@ -31,6 +31,11 @@ System prompt is treated as monolithic — no static/dynamic split. Every call r
 
 **What to look for:** Any mechanism for separating stable content (tool schemas, system identity, behavioral rules) from per-call dynamic content (session state, date, user context). Absence of this distinction means every tool description edit is paid in full on the next call.
 
+### 1.6 Reasoning or Thought State Dropped
+Provider-required reasoning items, thinking blocks, encrypted reasoning content, or thought signatures are not carried forward even though the model/runtime requires them for multi-turn tool use.
+
+**What to look for:** Responses reasoning items not replayed with function-call outputs, Claude thinking blocks stripped from the conversation, Gemini thought signatures omitted, or provider tool-call IDs lost when reconstructing history manually.
+
 ## Pass 2 — Important
 
 ### 2.1 "Just in Case" Context
@@ -59,6 +64,12 @@ The conversation has natural phase boundaries (discovery, planning, execution, c
 For agents intended to run across multiple sessions or maintain long-running state: no cross-session persistence, no eviction policy, no consolidation pass. In-session state only. Memory either grows unbounded or resets completely on session end. Neither is acceptable for agents that accumulate context over time.
 
 **What to look for:** Any mechanism for persisting agent state between sessions (files, databases), with an eviction or summarization strategy to prevent unbounded growth. For long-running agents, "save everything" and "reset every session" are both wrong — what is needed is structured accumulation with selective pruning.
+
+### 2.8 No Tool Loadout Strategy
+Large tool catalogs or MCP server definitions are included directly in context instead of selected by task relevance, searched dynamically, or exposed through code-mode/filesystem discovery.
+
+### 2.9 No Media Context Budget
+Image, video, audio, screenshots, or PDFs enter context without explicit sampling, resolution, frame, transcript, or per-item token budgets.
 
 ## Pass 3 — Minor
 

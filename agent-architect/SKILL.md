@@ -1,21 +1,24 @@
 ---
 name: agent-architect
-version: 0.6.1
+version: 0.7.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 9-dimension scoring and
+  design. Three modes: AUDIT (full system evaluation with 11-dimension scoring and
   cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
   (architecture thinking partner — new systems, existing system evolution, and
   focused design questions). Persists evaluation history to track
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
-  new agent files, or skill version updates. Incorporates 14 lessons from Anthropic's
-  engineering blog and 20 cognitive patterns from production agent systems, including
+  new agent files, or skill version updates. Incorporates 16 lessons from Anthropic's
+  engineering blog and 26 cognitive patterns from production agent systems, including
   a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
-  validity windows, and eviction. Use when asked to "review my agent", "evaluate my
-  prompts", "audit my multi-agent system", "design an agent", "design my memory
-  system", "evolve my agent", "should I add", "which model for", "brainstorm",
-  "help me think through", or "is my agent architecture good".
+  validity windows, and eviction, plus Harness Architecture and Multimodal Architecture
+  dimensions for production AI systems. Use when asked to "review my agent", "evaluate
+  my prompts", "audit my multi-agent system", "design an agent", "design my memory
+  system", "design my agent harness", "audit my voice agent", "review my MCP tools",
+  "evaluate my multimodal agent", "productionize my agent", "evolve my agent",
+  "should I add", "which model for", "brainstorm", "help me think through", or
+  "is my agent architecture good".
   Proactively invoke when the
   user shows agent code, prompt files, tool definitions, multi-agent orchestration,
   or persistent memory storage and asks for feedback. (agent-skills)
@@ -137,6 +140,24 @@ Before asking any questions, read the codebase to understand what exists.
    - Output as a new line in the System Map: `Memory: [present (storage: vector/graph/kv/file/tiered/hybrid; dominant type: semantic/episodic/procedural/mixed)] / [absent]`
    - This detection gates whether the Memory Architecture checklist runs in Deep Evaluation. If memory is absent, the dimension scores N/A and is excluded from the weighted average.
 
+2.7. **Detect harness/runtime surfaces (silent — no user interaction):**
+   - Glob for: `**/*agent*`, `**/*runner*`, `**/*sandbox*`, `**/*workflow*`, `**/*orchestrat*`, `**/*handoff*`, `**/*trace*`, `**/*approval*`, `**/*guardrail*`
+   - Grep for runtime markers: `Responses API`, `Agents SDK`, `SandboxAgent`, `generateContent`, `Interactions API`, `ClaudeAgentOptions`, `claude-agent-sdk`, `MCP`, `modelcontextprotocol`, `tool_search`, `computer_use`, `code_interpreter`, `background=true`, `previous_response_id`, `previous_interaction_id`, `reasoning.encrypted_content`, `thought_signature`
+   - Classify runtime: **direct-call**, **SDK loop**, **workflow graph**, **sandbox**, **managed agent**, **custom loop**, or **unknown**
+   - Classify execution boundary: **model-only**, **tool proxy**, **sandboxed code**, **host shell**, **browser/computer use**, or **external workflow**
+   - Detect state ownership: **client history**, **provider history**, **local files**, **database**, **sandbox snapshot**, **none**, or **unknown**
+   - Detect reasoning state: **preserved**, **dropped**, **not applicable**, or **unknown** based on provider-specific reasoning items, thinking blocks, encrypted reasoning content, thought signatures, and tool-call IDs.
+
+2.8. **Detect modalities (silent — no user interaction):**
+   - Grep for: `realtime`, `voice`, `audio`, `speech`, `transcription`, `TTS`, `STT`, `image`, `vision`, `video`, `screenshot`, `computer use`, `browser use`, `camera`, `webrtc`, `websocket`, `vad`
+   - Classify modalities: **text**, **image input**, **image generation**, **audio input**, **audio output**, **voice realtime**, **video input**, **computer/browser use**, **generated video**, or **none**
+   - Detect live-session requirements: VAD, barge-in, transcript handling, synchronous tool response, media storage, and latency metrics where visible.
+
+2.9. **Detect MCP/tool ecosystem (silent — no user interaction):**
+   - Grep for: `mcp`, `modelcontextprotocol`, `tool_search`, `remote MCP`, `server/tools`, `OAuth`, `resource`, `audience`, `tool annotations`
+   - Count MCP servers and agent-facing tools where visible.
+   - Classify tool loadout strategy: **all tools in context**, **dynamic tool search**, **filesystem/code-mode APIs**, **router tool**, **manual selection**, or **unknown**.
+
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
    - Count tools per agent
@@ -191,6 +212,11 @@ Model awareness: [all known / N cached / N unknown]
 
 Orchestration: [single-agent / router / parallel / pipeline / none]
 Memory: [present (storage: <type>; dominant type: <type>) / absent]
+Runtime: [direct-call / SDK loop / workflow graph / sandbox / managed agent / custom loop / unknown]
+Sandbox: [present / absent / unknown] — execution boundary: [model-only / tool proxy / sandboxed code / host shell / browser/computer use / external workflow]
+Reasoning state: [preserved / dropped / not applicable / unknown]
+Modalities: [text / image / audio / voice realtime / video / computer-use / none]
+MCP/tools: [N MCP servers, M tools] — loadout: [all-in-context / dynamic search / code-mode / router / manual / unknown]
 Eval infrastructure: [present / partial / absent]
 Tool count: N tools across M agents
 Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
@@ -260,7 +286,7 @@ Do not ask the user to select a mode. The auto-select rules cover all cases.
 
 | Mode   | When to use                                              | What you get                                    |
 |--------|----------------------------------------------------------|-------------------------------------------------|
-| AUDIT  | Existing agent system, want a full evaluation            | 7-dimension scored report, prioritized fixes     |
+| AUDIT  | Existing agent system, want a full evaluation            | 11-dimension scored report, prioritized fixes    |
 | REVIEW | Specific prompt or skill file to evaluate                | Focused teardown with line-by-line findings      |
 | DESIGN | Architecture questions — new system, evolving existing, or focused design topic | Design conversation with concrete recommendations |
 
@@ -310,6 +336,18 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 20. **Eviction is a Feature** — Memory without eviction is noise. Design the pruning rule at the same time as the storage rule, not after the store has rotted. The rule can be TTL-based, decay-based, capacity-based, reflection-based (collapse cluster of episodes into one summary), or user-initiated — but it must exist explicitly. "We keep everything indefinitely" is a valid choice if it is a deliberate choice with a known cost; it is an anti-pattern if it is the default by neglect.
 
+21. **The Model Runtime Contract** — A model is not just weights behind a string ID. It comes with an API surface, reasoning-state rules, tool semantics, modality support, context behavior, structured-output path, and deprecation schedule. When any of those change, the harness must be re-evaluated.
+
+22. **The Brain/Hands Boundary** — The model should decide only inside the authority boundary it is allowed to affect. Code execution, browser actions, credentials, and external writes belong behind structural boundaries that can be inspected, approved, sandboxed, or denied.
+
+23. **Tool Loadout Beats Tool Hoarding** — A model with every tool in context is not more capable; it is more distracted and easier to misroute. Expose the smallest useful tool set for the current task, and use tool search, filesystem-discoverable APIs, or code-mode for large MCP surfaces.
+
+24. **Trace Is the Unit of Evaluation** — For agents, the answer is not the only output. The trace includes model turns, tool calls, approvals, state mutations, retries, costs, latency, and artifacts. Production evals score the trace and terminal state, not just final prose.
+
+25. **Modality Is an Attack Surface** — Images, screenshots, audio, video, DOM, PDFs, and generated media can all carry instructions. Treat every modality as untrusted input until a containment layer converts it into validated data.
+
+26. **State Has an Owner** — Conversation history, reasoning state, memory, sandbox files, workflow variables, and artifacts must each have one owner. If state ownership is implicit, resets, retries, provider changes, and handoffs will corrupt it.
+
 
 ---
 
@@ -350,12 +388,14 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 3. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
 4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
 5. Read `checklists/security.md` — apply against all agent input/output channels, tool access scope, credential handling, and multi-agent trust boundaries
+6. Read `checklists/harness-architecture.md` — apply against runtime loop, SDK choice, sandbox/workspace, approvals, execution boundaries, state ownership, artifact flow, and recovery orchestration. For deeper background, read `references/harness-engineering.md` when a finding needs design justification.
 
 **Apply conditionally:**
-6. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
-7. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
-8. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
-9. Read `checklists/memory-architecture.md` — **only if** Discovery step 2.6 detected memory or persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, or repeated string concatenation of stored content into prompts). For deeper background on taxonomy, frameworks, reconciliation, temporal handling, and failure modes, read `references/memory-systems.md` when a finding requires justification or when DESIGN mode is exploring a memory question.
+7. Read `checklists/context-management.md` — **only if** Discovery detected context assembly, retrieval, history management, or prompts >4K tokens
+8. Read `checklists/multi-agent.md` — **only if** Discovery found 2+ agents
+9. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
+10. Read `checklists/memory-architecture.md` — **only if** Discovery step 2.6 detected memory or persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, or repeated string concatenation of stored content into prompts). For deeper background on taxonomy, frameworks, reconciliation, temporal handling, and failure modes, read `references/memory-systems.md` when a finding requires justification or when DESIGN mode is exploring a memory question.
+11. Read `checklists/multimodal-architecture.md` — **only if** Discovery step 2.8 detected image, audio, voice realtime, video, computer/browser use, screenshots, generated media, or media tool outputs. For deeper background, read `references/multimodal-agents.md`.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -493,8 +533,10 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | Model Awareness | 1.0x | Correct model for each role, model-specific prompt patterns, structured output enforcement, known failure modes mitigated, harness components marked for model-upgrade review | Using models but no model-specific optimization. Generic prompts applied to all models. | Wrong model for role, no structured output enforcement, known failure modes unmitigated, prompt format mismatched to model. |
 | Agent Security | 1.5x | Rule of Two satisfied; injection-resistant architectural pattern (Plan-Then-Execute or Dual LLM) for external content; task-scoped credentials; sandboxed execution; audit trail present | Rate limiting and output validation present but no injection containment architecture; processes untrusted content with unrestricted tool access | No security measures; agent processes untrusted external content with full tool access and live credentials in the same context; no audit trail |
 | Memory Architecture | 1.0x | Typed memory (preferences/facts/episodes/procedures); reconcile-on-write with ADD/UPDATE/DELETE/NOOP (or bi-temporal supersede); validity windows resolved to absolute timestamps on ingest; per-entity scoping where entities exist; eviction policy explicit; provenance tracked; user audit/edit/delete UX; LongMemEval-style regression suite | Single-typed store (e.g., flat preferences table) with simple last-write-wins; relative time stored verbatim with no validity window; user-only scope when entities matter; ad-hoc eviction; no memory-specific eval | Flat append-only store; no reconciliation; no typing; no validity windows; no eviction; no user control — every contradiction and "this week" entry persists forever |
+| Harness Architecture | 1.5x | Runtime boundaries explicit; state ownership clear; sandbox/workspace contract present; approvals before irreversible actions; traces and artifacts inspectable; recovery changes execution conditions | Agent loop works but state, sandbox, approvals, or artifact validation are implicit | Model-directed execution, credentials, tools, state, and artifacts are tangled in one opaque loop |
+| Multimodal Architecture | 1.0x | Turn-taking, transcript source of truth, media budgets, modality injection containment, live tool timing, fallback paths, and multimodal evals are explicit | Media works on happy path but lacks latency, fallback, or adversarial-media coverage | Voice/image/video/computer-use actions run with no modality-specific policy or validation |
 
-**Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture, Production Readiness, and Agent Security count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
+**Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture, Production Readiness, Agent Security, and Harness Architecture count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
 **Maturity Levels:**
 - **8.0-10.0:** Production-grade. Ship it.
@@ -525,6 +567,8 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 7. Model Awareness         | N/10  | [1-line summary]              |
 | 8. Agent Security          | N/10  | [1-line summary]              |
 | 9. Memory Architecture     | N/10 or N/A | [1-line summary or "Not applicable — no persistent memory"] |
+| 10. Harness Architecture   | N/10 or N/A | [1-line summary or "Not applicable"] |
+| 11. Multimodal Architecture | N/10 or N/A | [1-line summary or "Not applicable — text-only"] |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -555,7 +599,7 @@ After producing the completion summary, persist the evaluation and compare again
 - Derive project slug from git remote origin (sanitize to `[a-zA-Z0-9._-]`)
 - Create `~/.agent-skills/local/agent-architect/projects/{slug}/evaluations/` if it doesn't exist
 - Write evaluation file as `{YYYY-MM-DD}.md` (if a file for today already exists, append counter: `-2`, `-3`)
-- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `git_branch` (the branch name detected in Discovery step 5 — always quote the value as a YAML string to handle special characters, e.g. `git_branch: "feature/foo"` or `git_branch: "detached:abc1234"`), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `overall_maturity`, `maturity_level`, dimension `scores`, `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Discovery step 1)
+- Use Bash to write the file. Include YAML frontmatter with: `evaluated_date`, `skill_version`, `git_commit` (current HEAD short hash), `git_branch` (the branch name detected in Discovery step 5 — always quote the value as a YAML string to handle special characters, e.g. `git_branch: "feature/foo"` or `git_branch: "detached:abc1234"`), `system_name`, `agents_evaluated`, `tools_evaluated`, `models_detected`, `orchestration_pattern`, `runtime_pattern`, `sandbox_present`, `modalities_detected`, `mcp_servers_detected`, `tool_loadout_strategy`, `overall_maturity`, `maturity_level`, dimension `scores` (including Harness Architecture and Multimodal Architecture), `findings_count`, `shadow_paths_unhandled`, `model_upgrade_candidates`, and `agent_files` (list of agent-related files from Discovery step 1)
 - In the body, include: all findings grouped by severity (each as `- [SEVERITY] (confidence: N/10) file — description`), top 3 recommendations, shadow path summary per agent, and model upgrade candidates
 - On write failure: warn and continue — never block on persistence failure
 
@@ -577,6 +621,8 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 | Model Awareness          | N → N          | ↑/→/↓ | [1-line why]    |
 | Agent Security           | N → N          | ↑/→/↓ | [1-line why]    |
 | Memory Architecture      | N → N          | ↑/→/↓ | [1-line why]    |
+| Harness Architecture     | N → N          | ↑/→/↓ | [1-line why]    |
+| Multimodal Architecture  | N → N          | ↑/→/↓ | [1-line why]    |
 +--------------------------------------------------------------------+
 | Overall                  | N.N → N.N      | ↑/→/↓ |                 |
 +--------------------------------------------------------------------+
@@ -602,9 +648,10 @@ Focused teardown of a specific prompt, skill file, or tool definition.
    - **System prompt** → apply prompt-architecture + model-awareness checklists
    - **Tool definition / function schema** → apply tool-design + model-awareness checklists
    - **Skill file (SKILL.md or similar)** → apply prompt-architecture + tool-design + model-awareness checklists
-   - **Agent harness code** → apply context-management + production-readiness + model-awareness checklists
+   - **Agent harness code** → apply harness-architecture + context-management + production-readiness + model-awareness checklists
    - **Orchestration code** → apply multi-agent checklist
    - **Eval code** → apply eval-infrastructure checklist
+   - **Voice / image / video / realtime / computer-use code** → apply multimodal-architecture + security + production-readiness checklists
 3. If a target model is detectable (from the file, its imports, or surrounding code), read `model-profiles.md` for the relevant profile. If the target model is not detectable, note: "Target model unknown — model-awareness findings have reduced confidence."
 4. Count tokens, identify structural patterns, note what stands out
 
@@ -735,7 +782,11 @@ For the chosen approach, produce:
 
 6. **Cost model** — estimated tokens per invocation, estimated cost at stated volume, what the biggest cost driver is.
 
-7. **Memory architecture** — *include this section only if the system needs persistence across turns or sessions.* Specify: which CoALA types (preferences/facts/episodes/procedures) the system stores; storage choice (flat KV / vector / graph / tiered / file-based / hybrid) and why; scope and addressability tuple (user_id × entity_id × scope_id × …); write policy (hot-path vs. background, what triggers a write, extraction step); reconciliation policy (ADD/UPDATE/DELETE/NOOP rules, or bi-temporal supersede if historical state matters); validity-window defaults per memory type, with relative-time resolved at ingest; read policy (always-load / retrieve-on-demand / tool-call-to-recall) and retrieval scoring (relevance × recency × importance); eviction rule; user audit/edit/delete UX; provenance fields. For deeper guidance on any of these, read `references/memory-systems.md`.
+7. **Harness architecture** — runtime/API surface, state owner for conversation/reasoning/workspace/artifacts, execution boundary, sandbox/workspace manifest, approval gates, trace schema, recovery ladder, and model-upgrade re-evaluation triggers. For deeper guidance, read `references/harness-engineering.md`.
+
+8. **Multimodal architecture** — *include this section only if the system uses media.* Specify modalities, turn-taking, transcript/source-of-truth policy, media token/frame/resolution budget, live tool timing, fallback path, modality injection containment, media retention, and multimodal eval fixtures. For deeper guidance, read `references/multimodal-agents.md`.
+
+9. **Memory architecture** — *include this section only if the system needs persistence across turns or sessions.* Specify: which CoALA types (preferences/facts/episodes/procedures) the system stores; storage choice (flat KV / vector / graph / tiered / file-based / hybrid) and why; scope and addressability tuple (user_id × entity_id × scope_id × …); write policy (hot-path vs. background, what triggers a write, extraction step); reconciliation policy (ADD/UPDATE/DELETE/NOOP rules, or bi-temporal supersede if historical state matters); validity-window defaults per memory type, with relative-time resolved at ingest; read policy (always-load / retrieve-on-demand / tool-call-to-recall) and retrieval scoring (relevance × recency × importance); eviction rule; user audit/edit/delete UX; provenance fields. For deeper guidance on any of these, read `references/memory-systems.md`.
 
 ### DESIGN: Implementation Checklist
 
@@ -766,7 +817,7 @@ When working with an existing system, operate as a thinking partner, not an eval
 5. End each response with a follow-up question or decision prompt. The user can switch topics freely.
 6. Every recommendation must be concrete: not "it depends" but "if X, do Y; if Z, do W."
 
-**Design topics:** Agent topology, model selection, tool design, context strategy, memory architecture, evaluation approach, cost optimization, failure handling, harness lifecycle, agent security. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`. For memory questions ("should I add memory?", "how should my memory work?", "my memory store is full of contradictions", "users complain that the agent forgets / remembers stale things"), read `references/memory-systems.md` and walk the user through the type / storage / scope / write / reconcile / read / evict decision tree.
+**Design topics:** Agent topology, model selection, tool design, context strategy, memory architecture, harness architecture, multimodal architecture, MCP/tool loadout, evaluation approach, cost optimization, failure handling, harness lifecycle, agent security. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`. For memory questions ("should I add memory?", "how should my memory work?", "my memory store is full of contradictions", "users complain that the agent forgets / remembers stale things"), read `references/memory-systems.md` and walk the user through the type / storage / scope / write / reconcile / read / evict decision tree. For harness questions, read `references/harness-engineering.md` and walk through runtime surface, state ownership, execution boundary, approval gates, trace, and recovery. For multimodal questions, read `references/multimodal-agents.md` and walk through modality contract, source of truth, media budget, latency, fallback, and injection containment.
 
 **Decision Log** — When the conversation produces 3+ concrete decisions, offer to produce a summary:
 ```
@@ -807,6 +858,9 @@ Use WebSearch to find:
 - Tool/function calling support (native? parallel? format?)
 - System prompt adherence (strong? weak? avoid system prompt?)
 - Context window (raw size AND effective reliable range)
+- API surface for agentic work (chat/content endpoint vs. Responses/Interactions/SDK/runtime)
+- Reasoning state requirements (reasoning items, thinking blocks, encrypted reasoning content, thought signatures)
+- Modality support and runtime requirements (voice, image, video, realtime, computer-use)
 - Known failure modes for agent use cases
 - Recommended prompt patterns (XML? markdown? zero-shot? few-shot?)
 - Major version behavioral differences
@@ -873,7 +927,7 @@ Every question follows this structure:
 
 ## Principles Reference
 
-These 14 lessons from Anthropic's engineering blog and production code inform every evaluation:
+These 16 lessons from Anthropic's engineering blog and production code inform every evaluation:
 
 1. Start simple. Add complexity only when it demonstrably helps.
 2. Separate the agent doing the work from the agent judging it.
@@ -889,3 +943,5 @@ These 14 lessons from Anthropic's engineering blog and production code inform ev
 12. Restrict tools structurally, not by instruction alone. A read-only agent that has no write tools is correct by construction. An agent instructed not to write can still be prompted into doing so.
 13. Curate memory; don't hoard. Memory without active eviction becomes noise. Design for accumulation and pruning together — "look only for things you already suspect matter." Memory has types (preferences / facts / episodes / procedures, à la CoALA), each with its own write rules; reconcile-on-write (ADD / UPDATE / DELETE / NOOP) instead of appending; resolve relative time to absolute timestamps at ingest. Deep treatment in `references/memory-systems.md`.
 14. Assume injection succeeds. Design so that a successful injection cannot cause catastrophic outcomes. Filters and classifier layers reduce probability; architecture (sandboxing, least privilege, the Rule of Two) contains blast radius. The question is not "can an attacker inject?" but "what can they do if they do?"
+15. Own state in the harness. Reasoning items, thinking blocks, tool-call IDs, conversation history, workspace files, background tasks, approvals, and artifacts need explicit owners. A model upgrade does not fix state ambiguity.
+16. Treat every modality as both signal and instruction surface. Voice, image, video, screenshots, DOM, generated media, and transcripts need source-of-truth rules, budgets, containment, fallback paths, and eval fixtures.

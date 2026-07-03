@@ -28,6 +28,9 @@ The tool's input/output shape does not match the agent's actual decision. The ag
 
 **What to look for:** (a) Tool requires a complete object when the agent only wants to change one field (e.g., `update_slot(full_slot_dict)` when the agent just wants to swap a dish — should be `swap_dish_in_slot(date, slot, old_dish, new_dish)`). (b) Tool returns raw data the agent must transform before acting on it. (c) Agent needs multiple tool calls for what is conceptually one decision. The test: describe what the agent is deciding in one sentence, then check if the tool call matches that sentence.
 
+### 1.7 Tool Result Cannot Be Used Without Copying Large Payloads
+The tool returns or requires a large intermediate payload that the model must copy into another tool call. The tool layer should pass references, file paths, handles, or filtered summaries instead.
+
 ## Pass 2 — Important
 
 ### 2.1 No Parameter Constraints
@@ -49,6 +52,12 @@ Tools mirror the database schema (`create_user`, `create_event`, `create_notific
 The description explains what the tool does but not: (a) what it must NOT do ("NEVER call this before verifying X"), (b) when to use a different tool instead ("if you need Y, use tool Z"), or (c) how this tool relates to adjacent tools. Anti-patterns and cross-references are as important as the primary description. Without them, the agent learns only the happy path.
 
 **What to look for:** Tool descriptions that describe capabilities but not constraints, exclusions, or tool-selection guidance. The fix: encode anti-patterns as "NEVER..." rules, encode cross-references as "When X, use Y instead" clauses, and encode ordering constraints as "Only call after X" statements.
+
+### 2.7 MCP Tool Annotations Treated as Trusted
+The system relies on MCP annotations, descriptions, or server-provided hints as trusted policy even when they come from untrusted or unverified servers.
+
+### 2.8 No Tool Search or Discovery Interface for Large Tool Sets
+The agent has more than 50 possible tools but no `search_tools`, tool categories, progressive disclosure, or filesystem API index.
 
 ## Pass 3 — Minor
 

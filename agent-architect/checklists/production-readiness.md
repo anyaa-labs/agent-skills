@@ -34,6 +34,9 @@ The agent runs untrusted code or user-supplied inputs (via Bash, a sandbox, eval
 
 **What to look for:** Any path where (a) the agent executes code and (b) credentials are available as environment variables, files, or in-process config within that same execution scope. The structural fix: credentials must not enter the execution environment. Two patterns work: bundle auth into the resource during initialization (e.g., clone a git repo with its token wired into the remote — subsequent push/pull work without the agent ever handling the token), or hold credentials in an external vault and proxy tool calls through it (the agent calls the proxy; the proxy fetches credentials and makes the external call; the harness is never made aware of any credentials).
 
+### 1.7 No Background Task Lifecycle for Long-Running Agents
+Long-running work has no durable status, cancellation, retry ownership, timeout, progress event, or cleanup path.
+
 ## Pass 2 — Important
 
 ### 2.1 No Observability
@@ -52,6 +55,12 @@ Cannot trace a user's request through the agent pipeline. When a user reports "t
 
 ### 2.5 No Model Fallback
 The system depends on a single model endpoint. If that model is down, degraded, or deprecated, the entire system fails. No fallback to an alternative model.
+
+### 2.6 No Live Media Latency Budget
+Voice/realtime systems lack p50/p95 latency targets and monitoring for first audio, interruption, tool-mediated turns, and full response time.
+
+### 2.7 No Provider Deprecation or Alias Migration Gate
+Production model IDs can change or be deprecated without a stored eval baseline, rollout gate, or rollback path.
 
 ## Pass 3 — Minor
 

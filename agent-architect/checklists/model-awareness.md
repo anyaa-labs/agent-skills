@@ -80,6 +80,21 @@ The system uses a model with a documented critical failure mode, and no mitigati
 - Llama 8B in complex agent scenarios (loops, path forgetting, cascading errors)
 - Command R+ structured outputs combined with RAG mode (fundamentally incompatible)
 
+### 1.5 Reasoning State Not Preserved Across Tool Turns
+The model/API requires reasoning items, thinking blocks, encrypted reasoning content, or thought signatures to be preserved across tool turns, but the harness drops them. The next turn loses planning state or returns provider errors.
+
+**What to look for:** Responses reasoning items omitted after tool calls; encrypted reasoning content not replayed in stateless/ZDR mode; Claude thinking blocks discarded; Gemini thought signatures or function-call IDs missing from manually constructed history.
+
+### 1.6 API Surface Mismatched to Agent Runtime
+The application uses a basic chat/content endpoint for a workflow that requires server-managed state, background execution, typed trace steps, sandbox state, realtime sessions, or SDK-owned orchestration.
+
+**What to look for:** Long-running file/code agents implemented as stateless chat calls; realtime voice implemented through non-realtime text APIs; Gemini agent workflows on `generateContent` when Interactions API state is needed; OpenAI reasoning agents using legacy Chat Completions when Responses/Agents SDK is required for the runtime contract.
+
+### 1.7 Model Alias or Deprecated ID in Production
+The production config uses a legacy alias, preview ID, or scheduled-deprecation model name without a migration gate or eval baseline.
+
+**What to look for:** `deepseek-chat`, `deepseek-reasoner`, preview model IDs, provider aliases like "latest" in production config, or model strings not pinned by environment-specific rollout policy.
+
 ## Pass 2 — Important
 
 These degrade quality or increase risk but may not cause outright failures.
