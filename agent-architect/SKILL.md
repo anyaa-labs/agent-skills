@@ -1,6 +1,6 @@
 ---
 name: agent-architect
-version: 0.7.0
+version: 0.7.1
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 11-dimension scoring and
@@ -347,6 +347,8 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 25. **Modality Is an Attack Surface** — Images, screenshots, audio, video, DOM, PDFs, and generated media can all carry instructions. Treat every modality as untrusted input until a containment layer converts it into validated data.
 
 26. **State Has an Owner** — Conversation history, reasoning state, memory, sandbox files, workflow variables, and artifacts must each have one owner. If state ownership is implicit, resets, retries, provider changes, and handoffs will corrupt it.
+
+27. **The Invariant/Judgment Boundary** — Split every check by who can decide it. An *invariant* is decidable from known values by a rulebook — is this id in the allowed set? is this date in the future? does this enum permit this transition? — and belongs in deterministic code. A *semantic judgment* requires understanding what free text or intent *means* — are these two records the same fact? does this contradict that? is this request in scope? — and belongs to the model. There is no deterministic key for semantic equivalence: two records can share every structured field and mean different things, or share none and mean the same. The failure this prevents is the most seductive one in agent engineering: **patching deterministic code to compensate for a weak prompt** — adding a dedup/equivalence/classification heuristic in the service because the agent emitted duplicates or misclassified. That is treating the symptom at the wrong layer, and the heuristic is a fake judgment that silently merges distinct cases or misses paraphrases. The fix is always at the model layer: a richer prompt and better context (let the model reconcile against the state it can see), with deterministic code enforcing only the invariants *around* the model's decision. This is the general form of Pattern 18 (Reconcile-on-Write) — when you catch yourself keying free text to fake a "same thing?" check in code, stop and move the judgment back to the agent.
 
 
 ---

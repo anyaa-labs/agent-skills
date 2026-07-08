@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.1] — 2026-07-08
+
+### Added
+- **Pattern 27: The Invariant/Judgment Boundary** — split every check by who can decide it: invariants (decidable from known values by a rulebook) belong in deterministic code; semantic judgments (require understanding what free text/intent means) belong to the model. Names the most seductive agent-engineering failure — patching deterministic code to compensate for a weak prompt (a dedup/equivalence/classification heuristic in the service because the agent emitted duplicates or misclassified) — and directs the fix to the model layer. Generalizes Pattern 18 (Reconcile-on-Write) beyond memory.
+
 ## [0.7.0] — 2026-06-14
 
 ### Added
