@@ -102,7 +102,7 @@ A new conditional dimension, weight 1.0x, backed by `agent-architect/checklists/
 
 It is conditional in exactly the way Memory Architecture and Multimodal Architecture already are: it scores N/A and drops out of the weighted average when Discovery finds no trigger. This keeps it from penalising single-region systems that have no residency requirement.
 
-**Discovery step 2.8** detects:
+**Discovery step 2.10** detects:
 
 - Regional model identifiers (`sarvam*`, `falcon*`, `jais*`, `allam*`, `sea-lion*`, `sailor*`, `hyperclova*`, `solar*`).
 - Region configuration: `region=`, `ap-south`, `eu-west`, `me-central`, sovereign-cloud endpoints, Bedrock/Azure/Vertex region pinning.
