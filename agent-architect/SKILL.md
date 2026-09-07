@@ -1,6 +1,6 @@
 ---
 name: agent-architect
-version: 0.7.1
+version: 0.8.0
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
   design. Three modes: AUDIT (full system evaluation with 12-dimension scoring and
@@ -10,14 +10,15 @@ description: |
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
   new agent files, or skill version updates. Incorporates 16 lessons from Anthropic's
-  engineering blog and 26 cognitive patterns from production agent systems, including
+  engineering blog and 28 cognitive patterns from production agent systems, including
   a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
   validity windows, and eviction, plus Harness Architecture, Multimodal Architecture,
   and Sovereignty & Residency dimensions for production AI systems. Use when asked to "review my agent", "evaluate
   my prompts", "audit my multi-agent system", "design an agent", "design my memory
   system", "design my agent harness", "audit my voice agent", "review my MCP tools",
   "evaluate my multimodal agent", "productionize my agent", "evolve my agent",
-  "should I add", "which model for", "brainstorm", "help me think through", or
+  "should I add", "which model for", "which model should I use", "is my agent
+  compliant with data residency", "brainstorm", "help me think through", or
   "is my agent architecture good".
   Proactively invoke when the
   user shows agent code, prompt files, tool definitions, multi-agent orchestration,
@@ -360,6 +361,10 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 26. **State Has an Owner** — Conversation history, reasoning state, memory, sandbox files, workflow variables, and artifacts must each have one owner. If state ownership is implicit, resets, retries, provider changes, and handoffs will corrupt it.
 
 27. **The Invariant/Judgment Boundary** — Split every check by who can decide it. An *invariant* is decidable from known values by a rulebook — is this id in the allowed set? is this date in the future? does this enum permit this transition? — and belongs in deterministic code. A *semantic judgment* requires understanding what free text or intent *means* — are these two records the same fact? does this contradict that? is this request in scope? — and belongs to the model. There is no deterministic key for semantic equivalence: two records can share every structured field and mean different things, or share none and mean the same. The failure this prevents is the most seductive one in agent engineering: **patching deterministic code to compensate for a weak prompt** — adding a dedup/equivalence/classification heuristic in the service because the agent emitted duplicates or misclassified. That is treating the symptom at the wrong layer, and the heuristic is a fake judgment that silently merges distinct cases or misses paraphrases. The fix is always at the model layer: a richer prompt and better context (let the model reconcile against the state it can see), with deterministic code enforcing only the invariants *around* the model's decision. This is the general form of Pattern 18 (Reconcile-on-Write) — when you catch yourself keying free text to fake a "same thing?" check in code, stop and move the judgment back to the agent.
+
+28. **Residency Is an Architecture Constraint** — Where inference runs, where prompts and traces land, and which models are legally usable are design inputs, not deployment details discovered at launch. The common failure is partial: the team pins the model endpoint to a region and leaves the logging, tracing, and eval pipeline pointed at the default. When you see a residency claim, ask: which line of code enforces it, and does the telemetry respect the same boundary?
+
+29. **Memory as Tool Surface, Not Pre-Step** — A fixed retrieval step before every turn pays full cost whether or not the turn needs memory. Exposing store, recall, update, and discard as callable tools lets the agent decide. Ask: does this system retrieve because the turn needs it, or because the pipeline always does?
 
 
 ---
