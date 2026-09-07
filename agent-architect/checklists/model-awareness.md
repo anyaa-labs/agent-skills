@@ -82,7 +82,7 @@ These degrade quality or increase risk but may not cause outright failures.
 ### 2.1 Wrong Model for the Role
 The model is being used for a role it is poorly suited for, based on documented strengths and weaknesses.
 
-**What to look for:** Consult the detected family profile's version-specific notes and cost tier. Flag when a model documented as premium/frontier tier is used for high-volume worker tasks it wasn't designed for and a cheaper tier in the profile would serve; when a model whose profile flags it as unsuited for multi-step agentic orchestration is used as an orchestrator; or when a model documented as a small/budget tier is used as the primary agent in complex, multi-step scenarios its profile flags as out of scope.
+**What to look for:** Consult the detected family profile's current models or version-specific notes section for per-model facts and cost information. Cost may be indicated via per-model tier annotations (where present) or the family profile's frontmatter tier field (if annotations are absent). Flag when a model documented as premium/frontier tier is used for high-volume worker tasks it wasn't designed for and a cheaper tier in the profile would serve; when a model whose profile flags it as unsuited for multi-step agentic orchestration is used as an orchestrator; or when a model documented as a small/budget tier is used as the primary agent in complex, multi-step scenarios its profile flags as out of scope.
 
 **Suppression:** If cost or latency constraints justify the choice and the user is aware of the tradeoff, note it but do not flag as a finding.
 
@@ -102,7 +102,7 @@ Agent harness components (output parsers, retry loops, chain-of-thought scaffold
 ### 3.1 Suboptimal Model Selection
 A cheaper, faster, or more capable model could handle this role without tradeoffs. Not wrong, just leaving value on the table.
 
-**What to look for:** Compare the detected model's cost tier and documented strengths (from the family profile's version-specific notes) against the role it fills. Look for a cheaper tier in the same family that the profile suggests would suffice, a newer version in the profile documented as better suited to the specific task pattern than the one deployed, or the absence of a router/classifier model to keep simple requests off an expensive tier.
+**What to look for:** Compare the detected model's cost tier and documented strengths (from the family profile's current models or version-specific notes section) against the role it fills. Cost may be indicated via per-model tier annotations (where present) or the family profile's frontmatter tier field (if annotations are absent). Look for a cheaper tier in the same family that the profile suggests would suffice, a newer version in the profile documented as better suited to the specific task pattern than the one deployed, or the absence of a router/classifier model to keep simple requests off an expensive tier.
 
 ## Suppressions — DO NOT flag
 
