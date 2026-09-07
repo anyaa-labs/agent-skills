@@ -380,15 +380,21 @@ Based on Discovery findings, ask at most 3 clarifying questions, **ONE AT A TIME
 - What is the monthly cost or invocation volume?
 - What changed in the last model upgrade? Did you re-evaluate any harness components?
 
-**Unknown model handling (counts as ONE question toward the 3-question limit, regardless of how many unknowns):**
-If any models were marked UNKNOWN in Discovery, ask via a single AskUserQuestion that lists all unknown models:
-"I found [model1], [model2], ... in your codebase but don't have profiles for them. Want me to do a web search to learn about their agent-relevant characteristics?"
-Options: A) Yes, research all of them  B) Skip — evaluate without model-specific checks
-RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
+**Unknown and stale model handling (counts as ONE question toward the 3-question limit, regardless of how many models):**
 
-If user chooses A, use WebSearch to research each unknown model (see Unknown Model Protocol below) before proceeding to Deep Evaluation. Batch all unknowns into this single question — do NOT ask per model.
+Two Discovery outcomes route here, and they share a single AskUserQuestion:
 
-If any models were marked STALE (cached profile >90 days old), briefly note: "Profile for [model] was researched on [date]. It may be outdated but I'll use it. Let me know if you want me to refresh it."
+- **UNKNOWN** — no shipped family profile and no local cache entry.
+- **STALE** — a profile exists but its `researched_date` is more than 90 days old. This applies to **shipped family profiles under `model-profiles/` exactly as it applies to locally cached research files** — Discovery step 2.5 marks both, and both route into the Unknown Model Protocol (Step 2 onward) to offer live verification. Do not passively note a stale profile and move on.
+
+Ask via a single AskUserQuestion that lists every UNKNOWN and STALE model, using the Unknown Model Protocol Step 2 wording (below), which distinguishes the two cases. Batch them all into this one question — do NOT ask per model.
+
+RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss, and a >90-day profile is the exact window in which a provider deprecation lands unnoticed.
+
+If the user chooses A, use WebSearch to research each listed model (see Unknown Model Protocol below) before proceeding to Deep Evaluation. If the user chooses B:
+
+- For an UNKNOWN model, proceed without model-specific checks for it and say so.
+- For a STALE model, **still use the existing profile** — do not discard model-specific evaluation. Mark it STALE in the System Map, cap every finding derived from it at confidence 6, and append the caveat required by `checklists/model-awareness.md`: "Based on a profile last verified [date]; provider behavior may have changed."
 
 **Rules:**
 - If Discovery gives you enough to proceed, ask ZERO questions. Do not ask for the sake of asking.
@@ -751,7 +757,7 @@ Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION b
 
 5. **What is the volume?** 10/day (prototype) vs. 10K/day (production) vs. 10M/day (scale)?
 
-6. **What model(s) are you planning to use?** Or: are you open to model recommendations? (Read `model-profiles.md` to inform your recommendation based on the use case.)
+6. **What model(s) are you planning to use?** Or: are you open to model recommendations? (Read the index at `model-profiles.md` to pick candidates, then read the two or three `model-profiles/<family>.md` files the use case actually implicates — the index holds the family table, API-ID prefix mapping, cost tiers and staleness protocol, but **no capability, context-window, or tool-semantics facts**. Ground the recommendation in those family files, not in recollection. Load only the families the use case implicates — not all 15.)
 
 **Smart-skip:** If the user's initial description already answers a question, skip it. Only ask questions whose answers are not yet clear.
 
@@ -838,11 +844,11 @@ When working with an existing system, operate as a thinking partner, not an eval
 1. Ground every recommendation in Discovery findings — reference specific files, agent count, token sizes, cost estimates, detected models.
 2. Apply the Iron Law: if recommending complexity, demonstrate the concrete failure case where the simpler version breaks. If the simpler version doesn't demonstrably fail, say so.
 3. Reference evaluation history when available — "Your eval infrastructure scored 3/10 last audit. Before adding complexity, consider measuring what you have."
-4. For model questions, read `model-profiles.md`. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
+4. For model questions, read the family profile itself (`model-profiles/<family>.md`, found via the index at `model-profiles.md`) — the index alone carries no capability, context-window, or tool-semantics facts. When Discovery detected a model, load that family's file. When it detected none (a greenfield or comparative "which model should I use" question), use the index's family table and cost tiers to pick the two or three families the use case implicates, then load those files. Do not load all 15, and do not answer from recollection. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
 5. End each response with a follow-up question or decision prompt. The user can switch topics freely.
 6. Every recommendation must be concrete: not "it depends" but "if X, do Y; if Z, do W."
 
-**Design topics:** Agent topology, model selection, tool design, context strategy, memory architecture, harness architecture, multimodal architecture, MCP/tool loadout, evaluation approach, cost optimization, failure handling, harness lifecycle, agent security. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions, always read `model-profiles.md`. For memory questions ("should I add memory?", "how should my memory work?", "my memory store is full of contradictions", "users complain that the agent forgets / remembers stale things"), read `references/memory-systems.md` and walk the user through the type / storage / scope / write / reconcile / read / evict decision tree. For harness questions, read `references/harness-engineering.md` and walk through runtime surface, state ownership, execution boundary, approval gates, trace, and recovery. For multimodal questions, read `references/multimodal-agents.md` and walk through modality contract, source of truth, media budget, latency, fallback, and injection containment.
+**Design topics:** Agent topology, model selection, tool design, context strategy, memory architecture, harness architecture, multimodal architecture, MCP/tool loadout, evaluation approach, cost optimization, failure handling, harness lifecycle, agent security. Apply relevant cognitive patterns from the Cognitive Patterns section as analytical lenses — they are already in context. For model questions ("which model should I use", "should I switch models", "is this model right for this role"), always read the index at `model-profiles.md` **and then the specific `model-profiles/<family>.md` files it points to** — the index is a router, not a data source. For memory questions ("should I add memory?", "how should my memory work?", "my memory store is full of contradictions", "users complain that the agent forgets / remembers stale things"), read `references/memory-systems.md` and walk the user through the type / storage / scope / write / reconcile / read / evict decision tree. For harness questions, read `references/harness-engineering.md` and walk through runtime surface, state ownership, execution boundary, approval gates, trace, and recovery. For multimodal questions, read `references/multimodal-agents.md` and walk through modality contract, source of truth, media budget, latency, fallback, and injection containment.
 
 **Decision Log** — When the conversation produces 3+ concrete decisions, offer to produce a summary:
 ```
@@ -874,9 +880,22 @@ Check `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`
 - If not exists → proceed to Step 2
 
 ### Step 2: Ask user (during AUDIT Clarifying Questions, REVIEW Read and Classify, or DESIGN Context Assessment)
+
+Word the question to match which case actually applies. Never tell the user you have no profile for a model whose profile you are holding.
+
+**No profile at all (UNKNOWN):**
 Via AskUserQuestion: "I found [model] in your codebase but don't have a profile for it. Want me to do a web search to learn about its agent-relevant characteristics?"
 Options: A) Yes, research it  B) Skip — evaluate without model-specific checks for [model]
-RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss.
+
+**Profile exists but is >90 days old (STALE — shipped family profile or local cache):**
+Via AskUserQuestion: "I have a profile for [model], but it was last verified [date] ([N] days ago). Provider behavior may have changed since. Want me to do a web search to re-verify it?"
+Options: A) Yes, re-verify it  B) Use the existing profile as-is — model-specific checks still run, findings capped at confidence 6 with a staleness caveat
+
+**Both cases present:** ask once, listing each model with its case, and offer the same A/B.
+
+RECOMMENDATION: Choose A — model-specific evaluation catches issues generic checks miss, and >90 days is the window in which a provider deprecation lands unnoticed.
+
+Option B never means "discard model-specific evaluation" for a STALE model. A stale profile is still used — see `checklists/model-awareness.md` Confidence Calibration. Only an UNKNOWN model, with no profile at all, drops out of model-specific evaluation.
 
 ### Step 3: Research (if user says yes)
 Use WebSearch to find:
@@ -894,17 +913,37 @@ Use WebSearch to find:
 
 ### Step 4: Save locally
 Create `~/.agent-skills/local/agent-architect/model-research/` directory if it doesn't exist.
-Write findings to `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md` with frontmatter:
+Write findings to `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`.
+
+**A cached profile must be readable by exactly the same machinery as a shipped one.** Use the shipped frontmatter shape (`family`, `tier`, `researched_date` — the fields `tests/model_profiles.test.mjs` enforces on `model-profiles/*.md`), plus the two provenance fields that mark it as web-researched rather than primary-sourced:
+
 ```yaml
 ---
-model: [model name]
-provider: [provider name]
+family: [family slug — matches the model-profiles/ filename convention]
+tier: [frontier | open-weight | regional]
 researched_date: [YYYY-MM-DD]
 source: web-search
 confidence_note: Based on web research, not production-verified
 ---
 ```
-Use the same profile structure as `model-profiles.md` (strengths, failure modes, prompt patterns, harness requirements, anti-patterns, version-specific notes).
+
+Then use the **same 11-heading contract as the shipped family profiles** (`model-profiles/<family>.md`), in this order:
+
+```
+### API surface
+### Reasoning state
+### Tool semantics
+### Modality support
+### Context behavior
+### Structured output path
+### Deployment & residency
+### Known production failure modes
+### Harness requirements
+### Retired / migration targets
+### Re-evaluate when
+```
+
+These are the headings the checklists actually point at — `checklists/model-awareness.md` reads `### Structured output path`, `### Context behavior`, and `### Retired / migration targets`; `checklists/sovereignty-residency.md` reads `### Deployment & residency`. A profile written with any other structure dead-ends every one of those pointers. If research turned up nothing for a heading, keep the heading and record the gap under it ("Not documented on a provider-owned page as of [date]") rather than dropping it — an honest gap is readable; a missing section is not.
 
 ### Step 5: Apply to evaluation
 Use the researched profile for the current evaluation. All findings derived from this profile get a confidence caveat: "Based on web research ([date]), not production-verified profile."
