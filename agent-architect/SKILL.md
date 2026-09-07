@@ -366,7 +366,6 @@ These are not checklist items. They are thinking instincts. Internalize them. Ap
 
 29. **Memory as Tool Surface, Not Pre-Step** — A fixed retrieval step before every turn pays full cost whether or not the turn needs memory. Exposing store, recall, update, and discard as callable tools lets the agent decide. Ask: does this system retrieve because the turn needs it, or because the pipeline always does?
 
-
 ---
 
 ## AUDIT Mode
