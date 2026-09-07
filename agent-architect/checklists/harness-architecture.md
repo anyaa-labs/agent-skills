@@ -21,6 +21,13 @@ Generated code, files, emails, database updates, browser actions, or external AP
 ### 1.5 No Approval Boundary for Irreversible Actions
 The harness lets the model perform irreversible or externally visible actions without a structural pause, policy check, or human approval step.
 
+### 1.6 Tool Server Assumes Implicit Session Affinity Under a Stateless Protocol
+A tool-serving backend (an MCP server, or any component built against a session-oriented request model) keeps cross-call state implicitly — keyed by a connection, a transport-level session token, or a protocol session ID — instead of an explicit, caller-supplied handle. Under a stateless request model nothing guarantees the next call lands on the same process, replica, or connection: a load balancer, connection pool, restart, or replica failover can route it somewhere that never saw the earlier state. The failure is often not a loud error. The new process or a reused pooled connection can just as easily serve default/empty state as if it were the caller's own, or — with pooled connections — another caller's leftover state, so the agent gets a plausible-looking but wrong answer with no signal that context was lost or crossed a session boundary.
+
+This is distinct from 2.6 (no stated owner for cross-session preserved context): 2.6 is about who owns state that is deliberately retained across sessions; 1.6 is about a server or tool handler that was never designed to be stateless silently depending on session affinity to function at all, within or across calls.
+
+**What to look for:** A module-level or process-global dict/cache used as a state store, keyed by a connection object, a socket, or a session identifier the client is expected to keep supplying on a header or transport property rather than as an explicit tool argument. Deployment or infrastructure configuration that requires sticky routing (session-affinity load balancing, IP-hash routing, sticky cookies) for a "conversation" with a given tool server to keep working at all. A tool handler that reads its working state from ambient/global scope instead of accepting a handle, cursor, or continuation token as a parameter on the call itself. No code path or test for "the next call in this logical session lands on a different server process" — restart, redeploy, or failover with state held mid-flight.
+
 ## Pass 2 - Important
 
 ### 2.1 No Initializer or Handoff Contract for Multi-Context Work
