@@ -33,7 +33,7 @@ This is the dominant failure mode in OpenAI agent loops:
 ### Modality support
 
 - GPT-6 Astra and the GPT-5.6 family (Sol, Terra, Luna) cover text and image input, text output, multilingual capabilities, and vision.
-- **GPT-6 Astra** is documented with an emphasis on computer use, browsing, and software-engineering work, including context preservation across Codex sessions — a different architectural bet than a general-purpose GA flagship, since a model built for that emphasis may need a harness that actually carries multi-session state to benefit from it.
+- **GPT-6 Astra** is OpenAI's stated "most capable model, built for the hardest end-to-end work." The research brief does not document a specific computer-use/browsing/Codex-session emphasis for it beyond that purpose string and the `reasoning.effort` behavior below — treat any such emphasis as unverified rather than vendor-documented (see Sourcing gap carried forward).
 - Specialized modality models: `gpt-image-2` (image generation), `gpt-realtime-2.1` / `gpt-realtime-2.1-mini` (voice/realtime, with reasoning), `gpt-transcribe` / `gpt-live-transcribe` (speech-to-text), `gpt-realtime-translate` (speech translation), `gpt-audio-1.5` (documented replacement for the retired `gpt-audio` family), `gpt-5.6-cyber` (cybersecurity).
 
 ### Context behavior
@@ -59,20 +59,20 @@ This is the dominant failure mode in OpenAI agent loops:
 
 ### Version-specific notes
 
-- **GPT-6 Astra** (`gpt-6-astra`): OpenAI's stated "most capable model, built for the hardest end-to-end work," with a documented emphasis on computer use, browsing, software engineering, and context preservation across Codex sessions. Reasoning effort `low`/`medium`/`high`/`xhigh`/`max` — **`none` is rejected with a 400**, so a low-latency path that assumes reasoning can be turned fully off will not work on this model. Confirm rollout availability before depending on it in production: it should be treated as a different architectural bet than a GA flagship until its availability status is confirmed at build time, not assumed from this profile. Cost tier: $$$$.
+- **GPT-6 Astra** (`gpt-6-astra`): OpenAI's stated "most capable model, built for the hardest end-to-end work." Reasoning effort `low`/`medium`/`high`/`xhigh`/`max` — **`none` is rejected with a 400**, so a low-latency path that assumes reasoning can be turned fully off will not work on this model. Confirm rollout availability before depending on it in production: it should be treated as a different architectural bet than a GA flagship until its availability status is confirmed at build time, not assumed from this profile. Cost tier: $$$$.
 - **GPT-5.6 Sol** (`gpt-5.6-sol`, alias `gpt-5.6`): Flagship for complex professional work. Use Responses API for best reasoning/tool performance; preserve reasoning items across tool calls, and in stateless/ZDR mode include and replay encrypted reasoning content. Cost tier: $$$$.
 - **GPT-5.6 Terra** (`gpt-5.6-terra`): Balances intelligence and cost — the default production reasoning model for most agentic workflows. Cost tier: $$$.
 - **GPT-5.6 Luna** (`gpt-5.6-luna`): Cost-sensitive workloads; also one of the three models on OpenAI's UAE regional-processing allowlist. Cost tier: $$.
 - **GPT-realtime-2.1 / GPT-realtime-2.1-mini, GPT-realtime-translate, GPT-transcribe / GPT-live-transcribe, GPT-audio-1.5**: Voice/audio runtime models, including a reasoning-capable realtime line. Evaluate VAD, interruption, live tool timing, transcript drift, and fallback behavior separately from text agents. Cost tier: varies by audio usage.
 - **GPT-5.6-cyber**: Specialized cybersecurity model — treat as a narrow-purpose deployment, not a general worker substitute.
-- **Superseded generation (GPT-5.x, o3)**: See Retired below — do not carry forward mitigations written for `gpt-5-*` or `o3-*` without re-validating against the GPT-5.6 family.
+- **Deprecated generation (GPT-5.x pre-5.6, o3)**: deprecated 2026-06-11, shut down 2026-12-11 — see Retired below. Anyone still on `gpt-5-*` or `o3-*` has a live model with a migration deadline, not a dead endpoint; do not carry forward mitigations written for those IDs without re-validating against the GPT-5.6 family.
 
 ### Known production failure modes
 
 - Reasoning state dropped across tool calls.
 - Generic Chat Completions endpoint used for a workflow that needs SDK state, background execution, approvals, or sandbox artifacts — or used with a reasoning-effort value it no longer supports (anything but `none` on GPT-5.4 and later).
 - Realtime voice paths without VAD, interruption, transcript, or fallback contracts.
-- Legacy prompt scaffolding retained after a model upgrade without eval — especially scaffolding built around the now-retired GPT-5 (pre-5.6) or o3 generation.
+- Legacy prompt scaffolding retained after a model upgrade without eval — especially scaffolding built around the GPT-5 (pre-5.6) or o3 generation, which is deprecated but not shut down until 2026-12-11.
 - Harness code still targets Agent Builder, the Evals dashboard, or `/v1/prompts` after their announced shutdown.
 - A UAE deployment assumes regional *processing* everywhere the region is listed for residency, when in fact only three models on three endpoints qualify.
 
@@ -98,7 +98,7 @@ This is the dominant failure mode in OpenAI agent loops:
 | 2026-03-24 | 2026-09-24 | `sora-2`, `sora-2-pro`, Videos API | None announced as of 2026-09-08 |
 | 2025-09-26 | 2026-09-28 | `gpt-3.5-turbo-instruct`, `babbage-002`, `davinci-002`, `gpt-3.5-turbo-1106` | `gpt-5.6-terra` |
 
-**`o3` is fully retired**: `o3-2025-04-16` and `o3-pro-2025-06-10` were deprecated 2026-06-11 and shut down 2026-12-11, replaced by the GPT-5.6 family. **The base, un-dated `gpt-4o` and `gpt-4.1` aliases do not appear in the OpenAI-owned deprecations page fetched for this pass** — only specific dated snapshots are listed as retiring (`gpt-4o-2024-05-13`, `gpt-4.1-nano`), and the audio-capable `gpt-4o-audio` variant is retiring separately (2026-07-20 → 2027-01-20, replaced by `gpt-audio-1.5`). Treat the current status of the bare `gpt-4o` / `gpt-4.1` aliases as **not verified as of 2026-09-08** rather than asserting they are fully retired or still GA — check the live deprecations page before reporting a finding against them. GPT-4.5 does not appear anywhere in the sourced deprecations page or models list; do not assert a GPT-4.5 retirement date.
+**`o3` is deprecated, not yet shut down**: `o3-2025-04-16` and `o3-pro-2025-06-10` were deprecated 2026-06-11 and are scheduled to shut down 2026-12-11 (94 days out as of this writing) — replaced by the GPT-5.6 family. Anyone currently running `o3-2025-04-16` has a live model and a migration deadline, not a dead endpoint; treat this as an active-migration item, not a historical note. **The base, un-dated `gpt-4o` and `gpt-4.1` aliases do not appear in the OpenAI-owned deprecations page fetched for this pass** — only specific dated snapshots are listed as retiring (`gpt-4o-2024-05-13`, `gpt-4.1-nano`), and the audio-capable `gpt-4o-audio` variant is retiring separately (2026-07-20 → 2027-01-20, replaced by `gpt-audio-1.5`). Treat the current status of the bare `gpt-4o` / `gpt-4.1` aliases as **not verified as of 2026-09-08** rather than asserting they are fully retired or still GA — check the live deprecations page before reporting a finding against them. GPT-4.5 does not appear anywhere in the sourced deprecations page or models list; do not assert a GPT-4.5 retirement date.
 
 ### Re-evaluate when
 
@@ -134,4 +134,4 @@ Folded into this profile rather than a separate family file — same vendor, and
 
 ### Sourcing gap carried forward
 
-`help.openai.com`'s model-release-notes page (the source named in the original research task) returned HTTP 403 and was not reachable; the retirement facts above come from the OpenAI-owned deprecations page instead. The tools guide does not enumerate per-model support for computer use, shell, image generation, or skills — treat those as referenced but unspecified per model. Realtime/voice runtime contract details (session limits, VAD, interruption semantics) were not fetched in the research pass and are not asserted here.
+`help.openai.com`'s model-release-notes page (the source named in the original research task) returned HTTP 403 and was not reachable; the retirement facts above come from the OpenAI-owned deprecations page instead. The tools guide does not enumerate per-model support for computer use, shell, image generation, or skills — treat those as referenced but unspecified per model. Realtime/voice runtime contract details (session limits, VAD, interruption semantics) were not fetched in the research pass and are not asserted here. **GPT-6 Astra's computer-use/browsing/software-engineering/Codex-session-continuity emphasis is not in the research brief** — it appears only in a pre-research planning document, not in any vendor page the brief cites. The brief supports only the purpose string ("our most capable model, built for the hardest end-to-end work") and the `reasoning.effort` `none`→400 behavior. Do not represent the broader emphasis as vendor-documented until it is independently verified.
