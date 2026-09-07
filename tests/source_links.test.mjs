@@ -10,7 +10,7 @@ test('new reference files contain source sections with external links', () => {
   const referenceFiles = [
     'agent-architect/references/harness-engineering.md',
     'agent-architect/references/multimodal-agents.md',
-    'agent-architect/references/model-runtime-contracts-2026-06.md',
+    'agent-architect/references/model-runtime-contracts.md',
   ];
 
   for (const filePath of referenceFiles) {
@@ -24,7 +24,6 @@ test('new reference files contain source sections with external links', () => {
 test('model profiles declare current provenance and runtime contract fields', () => {
   const profiles = read('agent-architect/model-profiles.md');
   const required = [
-    'Researched 2026-06-14',
     'API surface',
     'Reasoning state',
     'Tool semantics',

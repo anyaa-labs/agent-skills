@@ -10,11 +10,11 @@ test('package and skill versions match the planned release', () => {
   const pkg = JSON.parse(read('package.json'));
   const skill = read('agent-architect/SKILL.md');
 
-  assert.equal(pkg.version, '0.7.1');
-  assert.match(skill, /^version: 0\.7\.1$/m);
+  assert.equal(pkg.version, '0.8.0');
+  assert.match(skill, /^version: 0\.8\.0$/m);
 });
 
-test('SKILL advertises and reports the same 11 audit dimensions', () => {
+test('SKILL advertises and reports the same 12 audit dimensions', () => {
   const skill = read('agent-architect/SKILL.md');
   const dimensions = [
     'Prompt Architecture',
@@ -28,9 +28,10 @@ test('SKILL advertises and reports the same 11 audit dimensions', () => {
     'Memory Architecture',
     'Harness Architecture',
     'Multimodal Architecture',
+    'Sovereignty & Residency',
   ];
 
-  assert.match(skill, /11-dimension scoring/);
+  assert.match(skill, /12-dimension scoring/);
   for (const dimension of dimensions) {
     assert.ok(
       skill.includes(dimension),
@@ -56,7 +57,7 @@ test('all checklist and reference links mentioned in SKILL exist', () => {
 test('Discovery records runtime, modality, and MCP surfaces in the system map', () => {
   const skill = read('agent-architect/SKILL.md');
 
-  for (const expected of ['Runtime:', 'Modalities:', 'MCP/tools:', 'Sandbox:', 'Reasoning state:']) {
+  for (const expected of ['Runtime:', 'Modalities:', 'MCP/tools:', 'Sandbox:', 'Reasoning state:', 'Residency:']) {
     assert.ok(skill.includes(expected), `Expected System Map field: ${expected}`);
   }
 });
