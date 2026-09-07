@@ -10,7 +10,7 @@ description: |
   improvement and regression over time — silently uses cached evaluations when the
   codebase hasn't changed, re-evaluates automatically when it detects code changes,
   new agent files, or skill version updates. Incorporates 16 lessons from Anthropic's
-  engineering blog and 28 cognitive patterns from production agent systems, including
+  engineering blog and 29 cognitive patterns from production agent systems, including
   a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
   validity windows, and eviction, plus Harness Architecture, Multimodal Architecture,
   and Sovereignty & Residency dimensions for production AI systems. Use when asked to "review my agent", "evaluate
