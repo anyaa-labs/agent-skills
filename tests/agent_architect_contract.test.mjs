@@ -40,6 +40,27 @@ test('SKILL advertises and reports the same 12 audit dimensions', () => {
   }
 });
 
+test('SKILL description claims the same cognitive pattern count the section actually lists', () => {
+  const skill = read('agent-architect/SKILL.md');
+
+  const claimMatch = skill.match(/(\d+) cognitive patterns/);
+  assert.ok(claimMatch, 'Expected SKILL.md description to claim "N cognitive patterns"');
+  const claimedCount = Number(claimMatch[1]);
+
+  const sectionStart = skill.indexOf('## Cognitive Patterns');
+  assert.ok(sectionStart !== -1, 'Expected a "## Cognitive Patterns" section in SKILL.md');
+  const nextHeading = skill.indexOf('\n## ', sectionStart + 1);
+  const section = nextHeading === -1 ? skill.slice(sectionStart) : skill.slice(sectionStart, nextHeading);
+
+  const actualCount = (section.match(/^\d+\. \*\*/gm) || []).length;
+
+  assert.equal(
+    claimedCount,
+    actualCount,
+    `SKILL.md description claims ${claimedCount} cognitive patterns but the Cognitive Patterns section lists ${actualCount}`,
+  );
+});
+
 test('all checklist and reference links mentioned in SKILL exist', () => {
   const skill = read('agent-architect/SKILL.md');
   const linkedFiles = new Set([
