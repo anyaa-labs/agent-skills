@@ -98,6 +98,36 @@ test('the index lists exactly the family files that exist', () => {
   }
 });
 
+// The index is the first model file the skill reads (SKILL.md Discovery 2.5), and
+// the Staleness Protocol lower in that same file tells the reader to do date
+// arithmetic against what they find there. A banner date older than the family
+// files therefore marks every family STALE on a schedule the data does not
+// warrant; one newer overstates freshness. Pin it to the family files' range.
+test('the index provenance banner agrees with the family files it indexes', () => {
+  const index = fs.readFileSync(INDEX_PATH, 'utf8');
+  const banner = index.match(/\*\*Provenance:\*\*\s*Researched\s*(\d{4}-\d{2}-\d{2})/);
+  assert.ok(
+    banner,
+    'model-profiles.md must open with a "**Provenance:** Researched YYYY-MM-DD" banner',
+  );
+
+  const dates = familyFiles().map((f) => parseFrontmatter(readProfile(f)).researched_date).sort();
+  const oldest = dates[0];
+  const newest = dates[dates.length - 1];
+
+  assert.ok(
+    banner[1] >= oldest,
+    `model-profiles.md provenance banner says ${banner[1]}, older than the oldest family ` +
+      `researched_date (${oldest}). The Staleness Protocol in this same file would mark ` +
+      `families stale off a date the data does not support.`,
+  );
+  assert.ok(
+    banner[1] <= newest,
+    `model-profiles.md provenance banner says ${banner[1]}, newer than the newest family ` +
+      `researched_date (${newest}). The banner must not claim freshness no profile has.`,
+  );
+});
+
 test('profile data is not dangerously stale', (t) => {
   for (const file of familyFiles()) {
     const fm = parseFrontmatter(readProfile(file));

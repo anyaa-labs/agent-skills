@@ -94,10 +94,10 @@ researched_date: 2026-09-08
 | `imagen-4.0-generate` (Imagen 4) and Gemini 3 Image models | Deprecated; shut down 2026-08-17 (announced 2026-06-15) | `gemini-3.1-flash-image` (Nano Banana 2) / `gemini-3-pro-image` (Nano Banana Pro) |
 | Veo models (pre-3.1) | Shut down 2026-06-30 (announced 2026-06-15) | `veo-3.1-generate-preview` / `veo-3.1-lite-generate-preview` |
 | `gemini-robotics-er-1.6-preview` | Shut down 2026-08-31 (announced 2026-07-30) | `gemini-robotics-er-2-preview` |
-| `gemini-omni-flash-preview` | **Deprecated 2026-09-30** (announced 2026-08-27) | `gemini-omni-1.1-flash` |
+| `gemini-omni-flash-preview` | Deprecation **scheduled** for 2026-09-30, not yet in effect as of 2026-09-08 (announced 2026-08-27); no shutdown date published | `gemini-omni-1.1-flash` |
 | Interactions API pre-2026-05-26 schema (`outputs` field, old `response_format`) | Legacy schema removed 2026-06-08 (new schema default since 2026-05-26, announced 2026-05-06) | Current Interactions API schema (`steps` field) |
 
-`gemini-omni-flash-preview` does not appear in this brief's own Retired table for Google — it surfaces separately in the Gemini API changelog (`ai.google.dev/gemini-api/docs/changelog`) and is added here to close that gap, consistent with the video-generation family (`gemini-omni-1.1-flash`) already listed under Current models.
+`gemini-omni-flash-preview` does not appear in this brief's own Retired table for Google. Its row above was therefore verified directly, on 2026-09-08, against the [Gemini API changelog](https://ai.google.dev/gemini-api/docs/changelog) — a page the brief itself names among Google's primary sources. The 2026-08-27 entry states that the existing `gemini-omni-flash-preview` endpoint "will be deprecated on September 30, 2026", and introduces `gemini-omni-1.1-flash` — already listed under Current models — as its GA successor. Two things follow, and both differ from the rest of this table: Google publishes **no shutdown date** for this endpoint, so the Status column here records the deprecation date rather than a shutdown date; and the deprecation is a **future** event as of 2026-09-08, not one that has already taken effect. Do not report a `gemini-omni-flash-preview` integration as already deprecated before that date.
 
 ### Re-evaluate when
 
