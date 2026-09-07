@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.0] — 2026-09-08
+
+### Added
+- **Sovereignty & Residency** as the 12th audit dimension (weight 1.0x, conditionally applied when Discovery detects a regional model, a data-residency obligation, or a deployment region constraint). Backed by `checklists/sovereignty-residency.md` and Discovery step 2.10, it checks whether residency claims are enforced in code rather than convention, whether logging/tracing/eval pipelines honor the same boundary as inference, whether model choice is legally valid for the deployment, and whether an in-boundary fallback exists.
+- **Pattern 28: Residency Is an Architecture Constraint** and **Pattern 29: Memory as Tool Surface, Not Pre-Step** — bringing the cognitive pattern count to 28.
+- `agent-architect/model-profiles/` — model facts split out of the single `model-profiles.md` file into 15 per-family profiles (Anthropic, OpenAI, Google, DeepSeek, Qwen, Moonshot, Zhipu, MiniMax, Meta, Mistral, Cohere, IBM Granite, Sarvam, Falcon, and a Regional-other file), behind a thin index that maps API ID prefixes to the right file. IBM Granite was added beyond the original set on the research pass's own recommendation. Every family file carries a `researched_date`, an 11-heading contract (including two new sections, `### Deployment & residency` and `### Retired / migration targets`), and at least 3 primary-provider citations.
+- A two-layer staleness protocol: `tests/model_profiles.test.mjs` warns when a family's `researched_date` is over 90 days old and fails the suite past 180, and the skill's own Unknown Model Protocol now routes any STALE family into live web-research re-verification before giving model-specific advice.
+- `tests/no_hardcoded_models.test.mjs` — a grep guard that fails if any file under `agent-architect/checklists/` contains a model name, version string, or date. Model facts now have exactly one home; a perishable fact can no longer re-enter a checklist, and an aged profile can no longer pass silently.
+- Cross-cutting additions: model-conditional frame-sampling guidance for multimodal agents, an embodied/robotics modality entry, a Pass 1 cross-agent memory trust-boundary finding, tool-exposed memory (store/recall/update/discard as callable tools rather than a fixed pre-turn retrieval step), and MCP capability findings covering the stateless core, multi-round-trip requests, and cacheable list results.
+
+### Changed
+- `checklists/model-awareness.md` de-rotted: 23 hard-coded model facts removed. Findings now read the detected family's profile instead of a fact frozen at write time.
+- `references/model-runtime-contracts-2026-06.md` renamed to `model-runtime-contracts.md` — the filename no longer bakes in a research date that the file itself now tracks via `researched_date`.
+- Frontmatter description: "11-dimension scoring" → "12-dimension scoring", "26 cognitive patterns" → "28 cognitive patterns". Added a clause naming the Sovereignty & Residency dimension alongside Memory/Harness/Multimodal, and added "which model should I use" and "is my agent compliant with data residency" to the invocation triggers.
+- README updated for the 12-dimension audit and a new section describing where model data lives and how the staleness protocol keeps it current.
+
+### Fixed
+- `model-profiles.md` described the DeepSeek legacy-alias (`deepseek-chat` / `deepseek-reasoner`) discontinuation as a **scheduled future event**, even though the retirement date had already passed by the time of the prior research pass. Anyone who audited a DeepSeek integration against that guidance was told a live risk was merely upcoming. The per-family DeepSeek profile now states the retirement as fact and documents the alias-to-ID replacement table.
+- The multimodal guidance prescribed a single fixed frame-sampling budget as if it applied to every video-capable model. It does not: models with agentic video navigation (retrieving frames/transcripts on demand during reasoning) have no frame-rate budget to set at design time — the correct budget is a navigation-step limit, the video analogue of a tool-call budget. Applying the old fixed-budget guidance to such a model either starves it of frames it would have fetched itself or defeats the purpose of navigation. The guidance is now model-conditional and says so explicitly rather than defaulting to fixed sampling.
+
 ## [0.7.1] — 2026-07-08
 
 ### Added

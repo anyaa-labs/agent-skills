@@ -9,11 +9,13 @@ Claude Code and Codex skills for evaluating and designing multi-agent systems.
 Senior architect review for agent systems, prompt engineering, and harness design.
 
 **Three modes:**
-- **AUDIT** — Full 11-dimension evaluation of an existing agent system. Scores prompt architecture, tool design, context management, multi-agent orchestration, eval infrastructure, production readiness, model awareness, agent security, memory architecture, harness architecture, and multimodal architecture. Produces a maturity score with prioritized recommendations.
+- **AUDIT** — Full 12-dimension evaluation of an existing agent system. Scores prompt architecture, tool design, context management, multi-agent orchestration, eval infrastructure, production readiness, model awareness, agent security, memory architecture, harness architecture, multimodal architecture, and sovereignty & residency. Produces a maturity score with prioritized recommendations.
 - **REVIEW** — Focused teardown of a specific prompt, skill file, or tool definition. Line-by-line findings with confidence scores.
 - **DESIGN** — Architect a new agent system from scratch. Produces system prompt drafts, tool specs, failure mode maps, eval plans, and implementation checklists.
 
-The current agent-architect version is built for production AI systems, not just prompt review. It evaluates runtime API contracts, tool harness boundaries, MCP/tool governance, background task execution, trace-based evaluation, and voice/image/video surfaces when those modalities are present.
+The current agent-architect version is built for production AI systems, not just prompt review. It evaluates runtime API contracts, tool harness boundaries, MCP/tool governance, background task execution, trace-based evaluation, voice/image/video surfaces when those modalities are present, and data-residency/sovereignty constraints when a model, deployment region, or regulatory obligation makes them conditional.
+
+**Model data.** Facts about individual model families (context windows, tool-calling semantics, reasoning-state requirements, known failure modes) live one place: `agent-architect/model-profiles/`, one file per family (Anthropic, OpenAI, Google, DeepSeek, Qwen, Meta, Mistral, Cohere, Moonshot, Zhipu, MiniMax, IBM Granite, Sarvam, Falcon, and other regional families), behind a thin index at `agent-architect/model-profiles.md`. Checklists never hard-code a model name or date — a test (`tests/no_hardcoded_models.test.mjs`) enforces it by grep — so a checklist finding always reads the current profile instead of a fact frozen at write time. Each profile carries a `researched_date`; a second test flags any profile over 90 days old and fails the suite past 180, and the skill's own Unknown Model Protocol routes stale or unrecognized families into live re-verification before giving model-specific advice.
 
 ## Install
 
