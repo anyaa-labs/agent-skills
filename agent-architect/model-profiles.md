@@ -34,6 +34,10 @@ Every profile includes:
 - `llama-4*`, `llama-*`, `meta-llama/*` -> `model-profiles/meta.md`
 - `mistral-*`, `open-mistral-*`, `codestral-*` -> `model-profiles/mistral.md`
 - `command-r*`, `cohere.*` -> `model-profiles/cohere.md`
+- `kimi-*`, `moonshot-*`, `moonshotai/*` -> `model-profiles/moonshot.md`
+- `glm-*`, `chatglm-*`, `zai-org/*` -> `model-profiles/zhipu.md`
+- `minimax-*`, `abab-*`, `MiniMaxAI/*` -> `model-profiles/minimax.md`
+- `granite-*`, `ibm-granite/*` -> `model-profiles/ibm-granite.md`
 
 If an API ID matches a family but not a specific version in the profile, apply family-wide patterns and note the uncertainty. Do not treat it as UNKNOWN if the family is known.
 
@@ -58,6 +62,10 @@ If an API ID matches a family but not a specific version in the profile, apply f
 | Llama (Meta) | `model-profiles/meta.md` | open-weight | 2026-09-08 |
 | Mistral | `model-profiles/mistral.md` | open-weight | 2026-09-08 |
 | Command (Cohere) | `model-profiles/cohere.md` | open-weight | 2026-09-08 |
+| Kimi (Moonshot AI) | `model-profiles/moonshot.md` | open-weight | 2026-09-08 |
+| GLM (Zhipu AI / Z.ai) | `model-profiles/zhipu.md` | open-weight | 2026-09-08 |
+| MiniMax | `model-profiles/minimax.md` | open-weight | 2026-09-08 |
+| Granite (IBM) | `model-profiles/ibm-granite.md` | open-weight | 2026-09-08 |
 
 **Folded-in open-weight lines:** OpenAI's open-weight `gpt-oss` family and Google's `Gemma` family are documented as subsections inside `openai.md` and `google.md` respectively, rather than as separate family files — same vendor, no separate profile file needed.
 
