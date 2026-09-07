@@ -3,7 +3,7 @@ name: agent-architect
 version: 0.7.1
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 11-dimension scoring and
+  design. Three modes: AUDIT (full system evaluation with 12-dimension scoring and
   cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
   (architecture thinking partner — new systems, existing system evolution, and
   focused design questions). Persists evaluation history to track
@@ -12,8 +12,8 @@ description: |
   new agent files, or skill version updates. Incorporates 16 lessons from Anthropic's
   engineering blog and 26 cognitive patterns from production agent systems, including
   a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
-  validity windows, and eviction, plus Harness Architecture and Multimodal Architecture
-  dimensions for production AI systems. Use when asked to "review my agent", "evaluate
+  validity windows, and eviction, plus Harness Architecture, Multimodal Architecture,
+  and Sovereignty & Residency dimensions for production AI systems. Use when asked to "review my agent", "evaluate
   my prompts", "audit my multi-agent system", "design an agent", "design my memory
   system", "design my agent harness", "audit my voice agent", "review my MCP tools",
   "evaluate my multimodal agent", "productionize my agent", "evolve my agent",
@@ -158,6 +158,15 @@ Before asking any questions, read the codebase to understand what exists.
    - Count MCP servers and agent-facing tools where visible.
    - Classify tool loadout strategy: **all tools in context**, **dynamic tool search**, **filesystem/code-mode APIs**, **router tool**, **manual selection**, or **unknown**.
 
+2.10. **Detect residency and sovereignty constraints (silent — no user interaction):**
+   - Grep for regional model identifiers: `sarvam`, `falcon`, `jais`, `allam`, `sea-lion`, `sailor`, `hyperclova`, `solar`, `k2-think`
+   - Grep for region configuration: `region=`, `ap-south`, `eu-west`, `me-central`, `us-gov`, sovereign-cloud endpoints, Bedrock/Azure/Vertex region pinning
+   - Grep for compliance and residency markers: `DPDP`, `GDPR`, `data residency`, `on-prem`, `VPC endpoint`, `air-gapped`, `sovereign`, `data localization`
+   - Grep for self-hosted serving bound to a declared region: `vllm`, `sglang`, `text-generation-inference`, `ollama` alongside any region marker
+   - Also check where logs, traces, and eval data are sent — an observability pipeline that egresses is a residency finding even when inference does not
+   - Output as a new line in the System Map: `Residency: [declared region(s); inference host; egress boundary] / [absent]`
+   - This detection gates whether the Sovereignty & Residency checklist runs in Deep Evaluation. If absent, the dimension scores N/A and is excluded from the weighted average.
+
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
    - Count tools per agent
@@ -217,6 +226,7 @@ Sandbox: [present / absent / unknown] — execution boundary: [model-only / tool
 Reasoning state: [preserved / dropped / not applicable / unknown]
 Modalities: [text / image / audio / voice realtime / video / computer-use / none]
 MCP/tools: [N MCP servers, M tools] — loadout: [all-in-context / dynamic search / code-mode / router / manual / unknown]
+Residency: [declared region(s); inference host; egress boundary] / [absent]
 Eval infrastructure: [present / partial / absent]
 Tool count: N tools across M agents
 Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
@@ -286,7 +296,7 @@ Do not ask the user to select a mode. The auto-select rules cover all cases.
 
 | Mode   | When to use                                              | What you get                                    |
 |--------|----------------------------------------------------------|-------------------------------------------------|
-| AUDIT  | Existing agent system, want a full evaluation            | 11-dimension scored report, prioritized fixes    |
+| AUDIT  | Existing agent system, want a full evaluation            | 12-dimension scored report, prioritized fixes    |
 | REVIEW | Specific prompt or skill file to evaluate                | Focused teardown with line-by-line findings      |
 | DESIGN | Architecture questions — new system, evolving existing, or focused design topic | Design conversation with concrete recommendations |
 
@@ -398,6 +408,7 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 9. Read `checklists/eval-infrastructure.md` — always apply. If Discovery found no eval scripts, test suites, or CI config, score the absence as a weakness (likely 1-2/10), not N/A. Every agent system benefits from evaluation infrastructure.
 10. Read `checklists/memory-architecture.md` — **only if** Discovery step 2.6 detected memory or persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, or repeated string concatenation of stored content into prompts). For deeper background on taxonomy, frameworks, reconciliation, temporal handling, and failure modes, read `references/memory-systems.md` when a finding requires justification or when DESIGN mode is exploring a memory question.
 11. Read `checklists/multimodal-architecture.md` — **only if** Discovery step 2.8 detected image, audio, voice realtime, video, computer/browser use, screenshots, generated media, or media tool outputs. For deeper background, read `references/multimodal-agents.md`.
+12. Read `checklists/sovereignty-residency.md` — **only if** Discovery step 2.10 detected regional models, region pinning, compliance markers, or region-bound self-hosted serving. Cross-reference the detected family's `### Deployment & residency` section for what the provider actually supports.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -537,6 +548,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | Memory Architecture | 1.0x | Typed memory (preferences/facts/episodes/procedures); reconcile-on-write with ADD/UPDATE/DELETE/NOOP (or bi-temporal supersede); validity windows resolved to absolute timestamps on ingest; per-entity scoping where entities exist; eviction policy explicit; provenance tracked; user audit/edit/delete UX; LongMemEval-style regression suite | Single-typed store (e.g., flat preferences table) with simple last-write-wins; relative time stored verbatim with no validity window; user-only scope when entities matter; ad-hoc eviction; no memory-specific eval | Flat append-only store; no reconciliation; no typing; no validity windows; no eviction; no user control — every contradiction and "this week" entry persists forever |
 | Harness Architecture | 1.5x | Runtime boundaries explicit; state ownership clear; sandbox/workspace contract present; approvals before irreversible actions; traces and artifacts inspectable; recovery changes execution conditions | Agent loop works but state, sandbox, approvals, or artifact validation are implicit | Model-directed execution, credentials, tools, state, and artifacts are tangled in one opaque loop |
 | Multimodal Architecture | 1.0x | Turn-taking, transcript source of truth, media budgets, modality injection containment, live tool timing, fallback paths, and multimodal evals are explicit | Media works on happy path but lacks latency, fallback, or adversarial-media coverage | Voice/image/video/computer-use actions run with no modality-specific policy or validation |
+| Sovereignty & Residency | 1.0x | Residency boundary declared and enforced in code; inference, logs, traces, and eval data all respect it; model choice legally valid for the deployment; language/script coverage matches the user population; in-boundary fallback exists | Residency stated in docs but enforced only by convention; observability pipeline egresses; no in-boundary fallback | Regional obligation claimed with no technical control; inference or telemetry crosses the boundary unnoticed |
 
 **Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture, Production Readiness, Agent Security, and Harness Architecture count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
@@ -571,6 +583,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 9. Memory Architecture     | N/10 or N/A | [1-line summary or "Not applicable — no persistent memory"] |
 | 10. Harness Architecture   | N/10 or N/A | [1-line summary or "Not applicable"] |
 | 11. Multimodal Architecture | N/10 or N/A | [1-line summary or "Not applicable — text-only"] |
+| 12. Sovereignty & Residency | N/10 or N/A | [1-line summary or "Not applicable — no residency constraint"] |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -625,6 +638,7 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 | Memory Architecture      | N → N          | ↑/→/↓ | [1-line why]    |
 | Harness Architecture     | N → N          | ↑/→/↓ | [1-line why]    |
 | Multimodal Architecture  | N → N          | ↑/→/↓ | [1-line why]    |
+| Sovereignty & Residency  | N → N          | ↑/→/↓ | [1-line why]    |
 +--------------------------------------------------------------------+
 | Overall                  | N.N → N.N      | ↑/→/↓ |                 |
 +--------------------------------------------------------------------+
@@ -632,6 +646,10 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 | Past recommendations addressed: N of M                              |
 +--------------------------------------------------------------------+
 ```
+
+Evaluations recorded before skill version 0.8.0 have no Sovereignty & Residency
+score. Render the row as `— → N` with the note "new dimension in 0.8.0". Do not
+report its appearance as a regression.
 
 - For "past recommendations addressed": compare today's findings against the same-branch previous evaluation's top 3 recommendations. If a recommendation's corresponding finding no longer appears, mark it as addressed.
 - Any REGRESSION (dimension score dropped) gets called out with a 1-line note explaining the likely cause based on the findings diff.
