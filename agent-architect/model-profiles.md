@@ -38,6 +38,9 @@ Every profile includes:
 - `glm-*`, `chatglm-*`, `zai-org/*` -> `model-profiles/zhipu.md`
 - `minimax-*`, `abab-*`, `MiniMaxAI/*` -> `model-profiles/minimax.md`
 - `granite-*`, `ibm-granite/*` -> `model-profiles/ibm-granite.md`
+- `sarvam-*` -> `model-profiles/sarvam.md`
+- `falcon-*`, `tiiuae/*` -> `model-profiles/falcon.md`
+- `jais-*`, `allam-*`, `k2-think-*`, `k2-horizon-*`, `sea-lion-*`, `hyperclova-*`, `hcx-*`, `solar-*` -> `model-profiles/regional-other.md`
 
 If an API ID matches a family but not a specific version in the profile, apply family-wide patterns and note the uncertainty. Do not treat it as UNKNOWN if the family is known.
 
@@ -66,6 +69,13 @@ If an API ID matches a family but not a specific version in the profile, apply f
 | GLM (Zhipu AI / Z.ai) | `model-profiles/zhipu.md` | open-weight | 2026-09-08 |
 | MiniMax | `model-profiles/minimax.md` | open-weight | 2026-09-08 |
 | Granite (IBM) | `model-profiles/ibm-granite.md` | open-weight | 2026-09-08 |
+| Sarvam AI (India) | `model-profiles/sarvam.md` | regional | 2026-09-08 |
+| Falcon / TII (UAE) | `model-profiles/falcon.md` | regional | 2026-09-08 |
+| Regional — other (Jais, ALLaM, K2, SEA-LION, HyperCLOVA X, Upstage Solar) | `model-profiles/regional-other.md` | regional | 2026-09-08 |
+
+**Regional tier.** These models are selected for residency, language coverage, or
+sovereignty obligations as often as for capability. When one is detected, the
+Sovereignty & Residency dimension applies — see `checklists/sovereignty-residency.md`.
 
 **Folded-in open-weight lines:** OpenAI's open-weight `gpt-oss` family and Google's `Gemma` family are documented as subsections inside `openai.md` and `google.md` respectively, rather than as separate family files — same vendor, no separate profile file needed.
 
