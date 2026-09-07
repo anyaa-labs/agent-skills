@@ -121,13 +121,14 @@ Before asking any questions, read the codebase to understand what exists.
 
 2.5. **Detect models used (silent — no user interaction):**
    - Search for model identifiers in code, config, and env files
-   - Grep for: `claude`, `gpt`, `gemini`, `llama`, `mistral`, `deepseek`, `command-r`, `cohere`, `qwen`, `yi-`
+   - Grep for: `claude`, `gpt`, `gemini`, `llama`, `mistral`, `deepseek`, `command-r`, `cohere`, `qwen`, `yi-`, `granite`, `kimi`, `moonshot`, `glm`, `minimax`, `sarvam`, `falcon`, `jais`, `allam`, `sea-lion`, `hyperclova`, `solar`
    - Also check: SDK client constructors, model config objects, API endpoint URLs
    - Extract specific version strings where possible (e.g., `gpt-4.1`, not just `gpt`)
    - For each detected model, silently resolve knowledge status:
      a. Check `model-profiles.md` (shipped with this skill) → KNOWN
      b. Check `~/.agent-skills/local/agent-architect/model-research/{slug}.md` → CACHED (note date) or STALE (>90 days)
      c. If neither → UNKNOWN (handled in AUDIT Clarifying Questions, not here)
+   - For each KNOWN family, compare its `researched_date` against today. If more than 90 days old, mark it STALE in the System Map and route into the Unknown Model Protocol (Step 2 onward) to offer live verification.
    - Read the applicable profile for KNOWN and CACHED models
    - **Do NOT ask the user anything here.** Discovery is silent.
 
@@ -154,7 +155,7 @@ Before asking any questions, read the codebase to understand what exists.
    - Detect live-session requirements: VAD, barge-in, transcript handling, synchronous tool response, media storage, and latency metrics where visible.
 
 2.9. **Detect MCP/tool ecosystem (silent — no user interaction):**
-   - Grep for: `mcp`, `modelcontextprotocol`, `tool_search`, `remote MCP`, `server/tools`, `OAuth`, `resource`, `audience`, `tool annotations`
+   - Grep for: `mcp`, `modelcontextprotocol`, `tool_search`, `remote MCP`, `server/tools`, `OAuth`, `resource`, `audience`, `tool annotations`, `programmatic tool calling`, `allowed_callers`, `extensions`, `server/discover`, `subscriptions/listen`
    - Count MCP servers and agent-facing tools where visible.
    - Classify tool loadout strategy: **all tools in context**, **dynamic tool search**, **filesystem/code-mode APIs**, **router tool**, **manual selection**, or **unknown**.
 
@@ -859,7 +860,8 @@ The Decision Log is a session artifact (not persisted to disk). Offer it, do not
 
 ## Unknown Model Protocol
 
-When a model is detected in the codebase but NOT found in shipped `model-profiles.md`:
+When a model is detected in the codebase but NOT found in the shipped family
+profiles, **or when its family profile is more than 90 days old**:
 
 ### Step 1: Check local cache
 Check `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`

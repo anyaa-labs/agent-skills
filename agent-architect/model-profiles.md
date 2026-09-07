@@ -1,6 +1,6 @@
 # Model Profiles for Agent Architecture Evaluation
 
-> **Provenance:** Researched 2026-06-14. Sources: OpenAI model, reasoning, tools, Agents SDK, sandbox, and voice docs; Anthropic model, extended thinking, harness, advisor, context, MCP, and Skills docs; Google Gemini model, Interactions, function calling, Live API, and computer-use docs; DeepSeek API updates; Mistral function calling and structured output docs; Qwen function calling and agent docs; Meta Llama 4 announcement; context-rot and agent-eval research. See `references/model-runtime-contracts-2026-06.md` and `CHANGELOG.md` for update history.
+> **Provenance:** Researched 2026-06-14. Sources: OpenAI model, reasoning, tools, Agents SDK, sandbox, and voice docs; Anthropic model, extended thinking, harness, advisor, context, MCP, and Skills docs; Google Gemini model, Interactions, function calling, Live API, and computer-use docs; DeepSeek API updates; Mistral function calling and structured output docs; Qwen function calling and agent docs; Meta Llama 4 announcement; context-rot and agent-eval research. See `references/model-runtime-contracts.md` and `CHANGELOG.md` for update history.
 
 These profiles describe *agent-relevant runtime contracts*, not just model personality. For current pricing, regional availability, rate limits, and provider-specific deployment constraints, use web research on the provider's official documentation.
 

@@ -71,6 +71,11 @@ Large tool catalogs or MCP server definitions are included directly in context i
 ### 2.9 No Media Context Budget
 Image, video, audio, screenshots, or PDFs enter context without explicit sampling, resolution, frame, transcript, or per-item token budgets.
 
+### 2.10 Cacheable Tool/Resource List Results Not Exploited in the Loadout Budget
+The runtime's tool, resource, and prompt list results (from an MCP server or an equivalent discovery call) are cacheable — the protocol returns a freshness hint and a cache-scope marker precisely so a client can reuse a prior list instead of re-fetching and re-rendering it into context — but the harness re-requests and re-assembles the full list into the prompt on every turn regardless. This is a specific instance of 2.8 (No Tool Loadout Strategy): once list results are cacheable, tool ordering becomes a prompt-cache concern as well as a loadout concern, and re-deriving a non-deterministic tool ordering on every call defeats both the list-level cache and the model provider's own prompt cache.
+
+**What to look for:** A tool/resource loadout that is rebuilt from scratch on every request — re-fetched, re-sorted, or re-serialized in a different order — when the underlying list has not changed and the source declares it cacheable. No respect for a returned freshness/TTL hint (re-fetching well inside the window the server said was safe to reuse) or for a cache-scope marker that would let a shared intermediary serve the list instead of the origin server. Non-deterministic tool ordering across otherwise-identical requests, which busts the model provider's prompt cache independently of whether the list itself was refetched. The fix: cache list results for their stated freshness window, preserve deterministic ordering across calls, and treat cache invalidation as an explicit event (a list-changed notification, a TTL expiry) rather than a per-turn default.
+
 ## Pass 3 — Minor
 
 ### 3.1 Compressible System Prompt
