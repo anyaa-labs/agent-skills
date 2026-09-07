@@ -26,9 +26,9 @@ Every profile includes:
 
 **API ID to family mapping:** Model strings in code often differ from marketing names. Match by prefix/substring:
 
-- `gpt-5*`, `gpt-realtime*`, `o*`, `gpt-*` -> `model-profiles/openai.md`
-- `claude-opus-4-*`, `claude-sonnet-4-*`, `claude-haiku-4-*`, `claude-*`, `anthropic.*` -> `model-profiles/anthropic.md`
-- `gemini-3*`, `gemini-2.5*`, `gemini-*` -> `model-profiles/google.md`
+- `gpt-5*`, `gpt-6*`, `gpt-realtime*`, `o*`, `gpt-*`, `openai/gpt-oss*` -> `model-profiles/openai.md`
+- `claude-opus-4-*`, `claude-sonnet-4-*`, `claude-haiku-4-*`, `claude-fable-*`, `claude-mythos-*`, `claude-*`, `anthropic.*` -> `model-profiles/anthropic.md`
+- `gemini-3*`, `gemini-2.5*`, `gemini-*`, `gemma-*`, `google/gemma*` -> `model-profiles/google.md`
 - `qwen3*`, `qwen-*`, `qwen_*` -> `model-profiles/qwen.md`
 - `deepseek-v4*`, `deepseek-v3*`, `deepseek-chat`, `deepseek-reasoner`, `deepseek-*` -> `model-profiles/deepseek.md`
 - `llama-4*`, `llama-*`, `meta-llama/*` -> `model-profiles/meta.md`
@@ -50,14 +50,16 @@ If an API ID matches a family but not a specific version in the profile, apply f
 
 | Family | Profile | Tier | Researched |
 |---|---|---|---|
-| Claude (Anthropic) | `model-profiles/anthropic.md` | frontier | 2026-06-14 |
-| GPT / reasoning / realtime (OpenAI) | `model-profiles/openai.md` | frontier | 2026-06-14 |
-| Gemini (Google) | `model-profiles/google.md` | frontier | 2026-06-14 |
+| Claude (Anthropic) | `model-profiles/anthropic.md` | frontier | 2026-09-08 |
+| GPT / reasoning / realtime / gpt-oss (OpenAI) | `model-profiles/openai.md` | frontier | 2026-09-08 |
+| Gemini / Gemma (Google) | `model-profiles/google.md` | frontier | 2026-09-08 |
 | DeepSeek | `model-profiles/deepseek.md` | open-weight | 2026-06-14 |
 | Qwen | `model-profiles/qwen.md` | open-weight | 2026-06-14 |
 | Llama (Meta) | `model-profiles/meta.md` | open-weight | 2026-06-14 |
 | Mistral | `model-profiles/mistral.md` | open-weight | 2026-06-14 |
 | Command (Cohere) | `model-profiles/cohere.md` | open-weight | 2026-06-14 |
+
+**Folded-in open-weight lines:** OpenAI's open-weight `gpt-oss` family and Google's `Gemma` family are documented as subsections inside `openai.md` and `google.md` respectively, rather than as separate family files — same vendor, no separate profile file needed.
 
 **Load only the families Discovery detected.** Reading every profile to reason about one wastes context — the same loadout discipline this skill applies to tool definitions (Pattern 23).
 
