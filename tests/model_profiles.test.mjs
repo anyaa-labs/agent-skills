@@ -45,8 +45,7 @@ const daysOld = (isoDate) =>
 
 test('the model-profiles directory exists and is not empty', () => {
   assert.ok(fs.existsSync(PROFILE_DIR), 'agent-architect/model-profiles/ must exist');
-  // Raised to 14 in Task 7, once the regional families land.
-  assert.ok(familyFiles().length >= 8, 'expected at least 8 family profile files');
+  assert.ok(familyFiles().length >= 15, 'expected at least 15 family profile files');
 });
 
 test('no profile still carries the Task 3 placeholder', () => {
