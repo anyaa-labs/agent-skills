@@ -20,7 +20,7 @@
 - Every family profile file must cite **at least 3 primary-provider links** (the provider's own documentation, model card, or release post). Aggregator blogs, leaderboards, and news roundups do not count toward the minimum and must not be the sole source for any claim.
 - No benchmark scores, no pricing tables. Cost stays on the existing coarse `$`/`$$`/`$$$`/`$$$$` tiers.
 - No new runtime dependency. `package.json` `dependencies` stays empty; tests use only `node:test`, `node:assert/strict`, `node:fs`, `node:path`.
-- Run `npm test` before every commit. Every task ends with a green suite.
+- Run `npm test` before every commit and record the result in your report. This plan is TDD-ordered: Tasks 2–10 are **expected red** on the specific assertions their successor tasks satisfy, and each task names which failures are expected. No task may introduce a *new* failure outside that named set, and no task may make the suite green by weakening an assertion. Task 11 ends fully green.
 
 ---
 
@@ -190,7 +190,17 @@ const daysOld = (isoDate) =>
 
 test('the model-profiles directory exists and is not empty', () => {
   assert.ok(fs.existsSync(PROFILE_DIR), 'agent-architect/model-profiles/ must exist');
-  assert.ok(familyFiles().length >= 10, 'expected at least 10 family profile files');
+  // Raised to 14 in Task 7, once the regional families land.
+  assert.ok(familyFiles().length >= 8, 'expected at least 8 family profile files');
+});
+
+test('no profile still carries the Task 3 placeholder', () => {
+  for (const file of familyFiles()) {
+    assert.ok(
+      !readProfile(file).includes('Not yet verified'),
+      `${file}: still carries the Task 3 placeholder — Tasks 4-7 must replace every instance`,
+    );
+  }
 });
 
 test('every family file has valid frontmatter', () => {
@@ -369,7 +379,9 @@ researched_date: 2026-06-14
 ...
 ```
 
-Add the two new required headings to each file. Populate `### Deployment & residency` and `### Retired / migration targets` from the research brief where it covers them; where it does not yet, write `Not yet verified — see Task 4-7.` as a single line. That placeholder is acceptable **only within this task**; Tasks 4–7 must replace every one.
+Add the two new required headings to each file. Populate `### Deployment & residency` and `### Retired / migration targets` from the research brief where it covers them; where it does not yet, write `Not yet verified — see Task 4-7.` as a single line.
+
+**This placeholder is explicitly sanctioned for this task only, and it is mechanically bounded:** Task 2's `no profile still carries the Task 3 placeholder` test fails while any instance survives, so it is expected red from here until Task 7 clears the last one. It is a tracked debt with an automatic due date, not an untracked TODO. Reviewers: this is deliberate and enforced — do not flag it as a placeholder defect in Task 3, and do flag it anywhere after Task 7.
 
 The existing "Version-specific notes" content stays as-is for now.
 
@@ -408,7 +420,11 @@ Keep the existing API-ID-to-family mapping section, and update each bullet to na
 
 Run: `npm test`
 
-Expected: the profile-structure, frontmatter, heading, and index-integrity tests now PASS. Version, dimension-count, `Residency:`, renamed-reference, and grep-guard tests still FAIL — those are Tasks 8–11.
+Expected PASS: directory exists, frontmatter, required headings, per-family source links, index integrity, staleness (86 days at plan time — under the 90-day warning).
+
+Expected still-FAIL, all cleared by later tasks: the placeholder test (Task 7), version and dimension count and `Residency:` (Tasks 9, 11), renamed reference (Task 10), grep guard (Task 8).
+
+Introducing any failure outside that list means something went wrong — report it rather than working around it.
 
 - [ ] **Step 4: Commit**
 
@@ -607,13 +623,33 @@ sovereignty obligations as often as for capability. When one is detected, the
 Sovereignty & Residency dimension applies — see `checklists/sovereignty-residency.md`.
 ```
 
-- [ ] **Step 5: Run the tests and commit**
+- [ ] **Step 5: Raise the family-count floor and clear the placeholder**
 
-Run: `npm test` — expected: all profile tests PASS.
+All families now exist, so pin the total. In `tests/model_profiles.test.mjs`, change the count assertion and drop the now-obsolete comment:
+
+```javascript
+  assert.ok(familyFiles().length >= 14, 'expected at least 14 family profile files');
+```
+
+Then confirm no profile still carries the Task 3 placeholder:
 
 ```bash
-git add agent-architect/model-profiles.md agent-architect/model-profiles/{sarvam,falcon,regional-other}.md
-git commit -m "docs: add Sarvam, Falcon, and regional sovereign model profiles"
+grep -rn "Not yet verified" agent-architect/model-profiles/
+```
+
+Expected: no output. If any line remains, the family it belongs to was not fully refreshed in Tasks 4–7 — go back and finish it rather than deleting the placeholder.
+
+- [ ] **Step 6: Run the tests and commit**
+
+Run: `npm test`
+
+Expected: **every test in `tests/model_profiles.test.mjs` now PASSES**, including the placeholder test that has been red since Task 3. Still failing: version, dimension count, `Residency:`, renamed reference, grep guard — Tasks 8–11.
+
+```bash
+git add tests/model_profiles.test.mjs agent-architect/model-profiles.md agent-architect/model-profiles/{sarvam,falcon,regional-other}.md
+git commit -m "docs: add Sarvam, Falcon, and regional sovereign model profiles
+
+Pins the family count at 14 and clears the Task 3 placeholder debt."
 ```
 
 ---
