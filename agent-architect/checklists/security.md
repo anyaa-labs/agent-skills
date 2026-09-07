@@ -48,7 +48,12 @@ Unrestricted filesystem access alone is dangerous — an agent can read credenti
 Untrusted retrieved content, external documents, media, or peer-agent output can change which tools are called, which recipients receive data, or which external actions are taken.
 
 ### 1.7 MCP Authorization or Token Audience Not Verified
-HTTP MCP servers or remote tools use OAuth-style authorization but the client/server does not verify audience/resource binding or per-server token scope.
+HTTP MCP servers or remote tools use OAuth-style authorization but the client/server does not verify audience/resource binding or per-server token scope. The current protocol-level authorization hardening adds three checks worth verifying explicitly, none of which are optional hygiene: (a) the client validates the authorization server's declared issuer identifier against the one it recorded before redeeming an authorization code, rather than trusting whatever issuer value comes back; (b) client credentials are bound to and stored keyed by the issuing authorization server, never reused against a different authorization server; and (c) dynamic client registration is treated as a legacy fallback, not the primary path — a client that only knows how to dynamically register may silently fail or mis-register against a server that expects pre-registered client metadata. A server or client that skips issuer validation, or that reuses one authorization server's credentials against another, has the same practical exposure as skipping audience verification altogether: a token minted for one trust context gets accepted in another.
+
+### 1.8 MCP Extensions Treated as Trusted Code Without Verification
+The protocol's extension mechanism (an opt-in, negotiated capability beyond the core protocol — long-running task handling, rich structured workflow instructions, or interactive UI elements rendered inline) is loaded and honored the same way core protocol behavior is, with no verification step of its own. An extension is code the agent's tool layer executes or renders on the model's or server's behalf — it is not passive metadata, and it should not inherit trust just because it arrived over the same connection as a verified tool list.
+
+**What to look for:** Extension capabilities negotiated and acted on with no separate approval, pinning, or integrity check distinct from whatever check (if any) applies to ordinary tool definitions. Rendered or executed extension content (inline UI elements, workflow instructions, task-handle payloads) treated as trusted display/execution surface rather than being subject to the same untrusted-until-verified posture as tool annotations (cross-reference 1.4). An extension from an unverified or dynamically-discovered server accepted without the same integrity-hash-at-approval-time discipline applied to tool descriptions. The fix: extend whatever verification gate exists for tool definitions to cover extension capabilities explicitly — do not assume "it's part of the protocol" means "it's safe."
 
 ## Pass 2 — Important
 
@@ -119,6 +124,7 @@ Raw HTML, markdown, PDFs, or API responses are inserted into context without str
 - **1.1** — suppress if the agent demonstrably has no external content input channel OR no consequential output channel. One condition alone is insufficient; suppression requires the complete absence of one of the two halves.
 - **1.2** — suppress for single-agent systems.
 - **1.4** — suppress if the system does not use MCP or any plugin/tool-discovery architecture where tool definitions are loaded dynamically.
+- **1.8** — suppress if the system does not use MCP or negotiate any extension capability beyond core tool/resource/prompt listing.
 - **1.5** — suppress if the agent has no code execution surface, no file-write tools, and makes no outbound network connections from within the execution environment.
 - **2.3** — suppress if the agent has no persistent memory and no RAG retrieval pipeline.
 - **3.2** — suppress if the system prompt contains no sensitive information beyond the agent's role description and behavioral guidelines.

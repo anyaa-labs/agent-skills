@@ -2,7 +2,7 @@
 
 ## Instructions
 
-Apply this checklist to the runtime layer around the model: agent loop, SDK/runtime choice, sandbox/workspace, state persistence, approvals, execution boundaries, artifact flow, provider transport, and recovery orchestration. Read `references/harness-engineering.md` when a finding needs design justification.
+Apply this checklist to the runtime layer around the model: agent loop, SDK/runtime choice, sandbox/workspace, state persistence, approvals, execution boundaries, artifact flow, provider transport, and recovery orchestration. Recognized runtime classes include a custom agent loop, an SDK-managed loop, a workflow graph, a sandboxed execution environment, and a **managed-agent runtime** — a pre-built, provider-hosted agent harness (model, tools, sandbox/environment, and session lifecycle bundled and operated by the provider) used instead of a self-built loop. A managed-agent runtime does not exempt a system from this checklist; it relocates several of the questions below onto the provider's side of the boundary, which is itself worth naming explicitly rather than assuming away. Read `references/harness-engineering.md` when a finding needs design justification.
 
 ## Pass 1 - Critical
 
@@ -37,6 +37,11 @@ The harness exposes 50+ tools, multiple MCP servers, or large tool result payloa
 
 ### 2.5 Recovery Does Not Change the Execution Conditions
 Retries reuse the same model, same context, same state, and same tool path after failure. There is no pruned-context retry, model fallback, sandbox reset, or user escalation.
+
+### 2.6 No Stated Owner for Cross-Session Preserved Context
+The system carries context forward across sessions — a provider-side session/history reference, a managed-agent runtime's retained conversation state, a persisted run manifest — without a clear answer to who owns it: the harness, the provider, or an external store the harness controls. This is a distinct question from 2.1 (handoff artifacts within a task) and from the Memory Architecture dimension (durable facts/preferences) — it is specifically about *runtime* context that spans sessions and who is responsible for its correctness once it does.
+
+**What to look for:** Reliance on a provider-managed session/history identifier to carry context across sessions with no local record of what that identifier resolves to, no policy for when it expires or is invalidated server-side, and no plan for what happens when the harness's assumption about that state diverges from what the provider actually retained. No answer to: if the preserved context is stale or wrong (the provider expired it, truncated it, or a resumed session picks up a different snapshot than expected), does the harness detect that, and what does it do? Treat "the provider handles it" as an answer only if the harness can name the provider's stated retention/expiry contract — an unstated assumption about provider-side retention is itself the finding.
 
 ## Pass 3 - Minor
 

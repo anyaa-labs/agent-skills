@@ -59,6 +59,11 @@ The system relies on MCP annotations, descriptions, or server-provided hints as 
 ### 2.8 No Tool Search or Discovery Interface for Large Tool Sets
 The agent has more than 50 possible tools but no `search_tools`, tool categories, progressive disclosure, or filesystem API index.
 
+### 2.9 Tool Search or Programmatic Tool Calling Available but Not Used for a Large Static Surface
+The runtime/provider offers a tool search mechanism (deferred tool definitions, resolved by name/regex/semantic search at call time rather than loaded into context up front) or a programmatic tool-calling path (the model invokes tools from inside a code-execution step rather than round-tripping every call through the conversation), and the system's tool loadout is large or static enough to benefit, but the harness still sends every tool definition into context on every turn and drives every call through the model directly. These are both recognized tool-loadout strategies alongside router tools, filesystem/code-mode APIs, and manual selection — not an exotic optimization to bolt on later once things get slow.
+
+**What to look for:** A tool count or combined tool-definition token size that clears the platform's own stated threshold for enabling search (context bloat past several thousand tokens of definitions, or accuracy degradation past a few dozen tools), with no deferred-loading flag set on any tool and no evidence the harness calls a search/discovery tool before selecting. Repetitive, high-volume, or loop-driven tool calls (e.g., iterating a tool over a list, chaining several tool outputs into the next tool's input) that round-trip through the model on every single invocation when a programmatic/code-execution calling path is available and would let the model orchestrate the loop without a model round trip per step. The fix is not a new tool — it's turning on the loadout mechanism the provider already exposes.
+
 ## Pass 3 — Minor
 
 ### 3.1 Inconsistent Naming

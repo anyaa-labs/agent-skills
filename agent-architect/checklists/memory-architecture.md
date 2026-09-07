@@ -37,6 +37,13 @@ Anything the model says, anything the model reads from a tool, or anything an un
 
 **What to look for:** Code that writes assistant responses, tool outputs, scraped web content, or untrusted user input directly to the memory store. No `source` or `provenance` field on memory records. No quarantine for memories derived from external content. Cross-reference this with the existing **Pattern 16: Injection Surface** in SKILL.md — long-term memory is the most expensive injection target because a single successful poison persists across all future sessions. The fix: structurally separate "trusted preference set by the user" from "candidate fact extracted from a conversation" from "fact derived from an external source"; require explicit promotion across the boundary.
 
+**This finding assumes a single-agent store — verify the multi-agent case separately.** 1.5 as written covers one agent poisoning its own memory. It does not cover a distinct and more dangerous shape: **shared managed-agent memory that multiple agents read and write** — most commonly a file-backed store (a shared memory directory, a common `/memories`-style path, a shared workspace file) that more than one agent has read access to.
+
+### 1.6 Cross-Agent Memory Trust Boundary Absent in Shared Memory
+When two or more agents read from and write to the same memory store — file-backed shared memory being the most common shape in managed-agent runtimes — a write made by one agent is consumed as trusted input by another agent the moment it is read back. This is structurally different from single-agent poisoning: the write and the read happen in **different trust contexts** (different agent roles, different privilege levels, potentially different task scopes), so a compromised or merely buggy low-privilege agent's poisoned write can propagate directly into a high-privilege agent's context with no re-validation in between. **One agent's poisoned write becomes another agent's trusted input — a lateral-movement vector across the agent boundary, not just a self-inflicted data-quality problem.**
+
+**What to look for:** Multiple agents (or agent roles) pointed at the same memory directory, file, or store with no per-agent read/write scoping. No re-validation step when Agent B reads a memory record written by Agent A — the record is trusted purely because it came from "the memory store," with no check on which agent wrote it, at what privilege level, or from what source. No provenance field distinguishing "written by this agent from a user-confirmed fact" from "written by a different agent from its own model output or tool results." The fix: scope memory writes/reads per agent or per trust tier where agents differ in privilege; if a shared store is required, require explicit promotion (the same pattern as 1.5) at the point where a lower-trust agent's write becomes visible to a higher-trust agent, not just at the point where content first enters memory. Cross-reference **Pattern 16 (Injection Surface)** and the multi-agent trust findings in the Agent Security checklist (1.2 — high-privilege agents implicitly trusting peer agent messages) — this is the memory-specific instance of that same problem.
+
 ## Pass 2 — Important
 
 ### 2.1 Indiscriminate Writes — No Extraction or Salience Step
@@ -74,6 +81,11 @@ The team has no way to measure whether memory works. There is no eval suite that
 
 **What to look for:** No memory-specific test file. No fixture conversations exercising "I told you my favorite breakfast last week, what is it?" No regression on "you used to like X but now you like Y." The fix: at minimum, build a small in-house eval that exercises LongMemEval's five abilities against the system's actual memory layer. Treat it as a regression suite that runs on every memory-related PR.
 
+### 2.8 Fixed Retrieval Pre-Step Where a Tool Surface Would Fit
+Memory retrieval runs as an unconditional pre-step on every single turn — a retrieval call fires before the model has any chance to decide whether it needs one — even though the workload's actual recall need is sparse and turn-dependent (most turns are small talk, task execution, or otherwise don't touch stored preferences/facts). The system pays retrieval latency and token cost on every turn regardless of need, when the model's own tool-calling loop could be trusted to fetch memory only when it actually needs it.
+
+**What to look for:** A retrieval call hard-wired into the top of the request-assembly path with no conditional gate, on a system where the runtime already supports tool/function calling and the memory access pattern is naturally sparse (not every turn needs a lookup). No "does this turn need memory" decision point anywhere in the pipeline — retrieval is unconditional by construction, not by measured need. The fix is not "remove retrieval" — it is exposing memory read (and where appropriate write) operations as callable tools the model invokes mid-reasoning, so retrieval cost is paid only on the turns that need it. This does not apply where most turns genuinely need memory context or where missed recall is unacceptable (compliance-sensitive lookups) — a fixed pre-step is the right choice there; flag this finding only when the sparse-need condition holds and no tool alternative exists.
+
 ## Pass 3 — Minor
 
 ### 3.1 Inconsistent Namespace Conventions
@@ -94,6 +106,7 @@ Updates and deletions are destructive. There is no way to recover a memory the u
 - **Caches that look like memory but are not memory.** A KV cache for tool responses with a 5-minute TTL is not a memory system.
 - **In-context "remember within this turn" structures.** That is working memory and belongs to the Context Management dimension.
 - **Read-only memory imported from a fixed corpus** (e.g., a static knowledge base). Reconciliation, eviction, and write-policy findings do not apply; retrieval-quality findings still do.
+- **1.6** — suppress for single-agent systems, or for multi-agent systems where each agent has its own isolated memory store with no shared read/write path between agents.
 
 ## Confidence Calibration
 
@@ -105,6 +118,8 @@ Updates and deletions are destructive. There is no way to recover a memory the u
 ## Cross-references
 
 - Pattern 16 (Injection Surface): long-term memory is the highest-value injection target because a single poison persists across sessions. Always evaluate 1.5 in light of the security checklist.
+- Agent Security checklist 1.2 (high-privilege agents implicitly trusting peer agent messages): 1.6 is the memory-specific instance of that same trust-boundary problem. Co-file 1.6 with a 1.2 finding when both apply to the same shared-memory path.
 - Lesson 13 (Curate memory, don't hoard): is the parent principle for 1.4 (eviction).
 - Context Management dimension: working memory and within-turn assembly. Memory Architecture covers across-turn persistence. Findings about prompt-time context assembly belong there, not here.
+- Tool Design / Context Management loadout findings: 2.8 (fixed pre-step where a tool surface fits) is the memory-specific instance of the same tool-loadout-vs-context-stuffing tradeoff those dimensions evaluate for non-memory tools.
 - Production Readiness: memory failures (silent destruction, accidental cross-user leakage) are also production-readiness failures — co-file findings when they touch operational hygiene.
