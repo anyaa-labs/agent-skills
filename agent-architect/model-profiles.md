@@ -53,11 +53,11 @@ If an API ID matches a family but not a specific version in the profile, apply f
 | Claude (Anthropic) | `model-profiles/anthropic.md` | frontier | 2026-09-08 |
 | GPT / reasoning / realtime / gpt-oss (OpenAI) | `model-profiles/openai.md` | frontier | 2026-09-08 |
 | Gemini / Gemma (Google) | `model-profiles/google.md` | frontier | 2026-09-08 |
-| DeepSeek | `model-profiles/deepseek.md` | open-weight | 2026-06-14 |
-| Qwen | `model-profiles/qwen.md` | open-weight | 2026-06-14 |
-| Llama (Meta) | `model-profiles/meta.md` | open-weight | 2026-06-14 |
-| Mistral | `model-profiles/mistral.md` | open-weight | 2026-06-14 |
-| Command (Cohere) | `model-profiles/cohere.md` | open-weight | 2026-06-14 |
+| DeepSeek | `model-profiles/deepseek.md` | open-weight | 2026-09-08 |
+| Qwen | `model-profiles/qwen.md` | open-weight | 2026-09-08 |
+| Llama (Meta) | `model-profiles/meta.md` | open-weight | 2026-09-08 |
+| Mistral | `model-profiles/mistral.md` | open-weight | 2026-09-08 |
+| Command (Cohere) | `model-profiles/cohere.md` | open-weight | 2026-09-08 |
 
 **Folded-in open-weight lines:** OpenAI's open-weight `gpt-oss` family and Google's `Gemma` family are documented as subsections inside `openai.md` and `google.md` respectively, rather than as separate family files — same vendor, no separate profile file needed.
 
