@@ -19,6 +19,7 @@
 - Every family profile file must carry YAML frontmatter with `family`, `tier` (one of `frontier`, `open-weight`, `regional`), and `researched_date` in `YYYY-MM-DD` form.
 - Every family profile file must cite **at least 3 primary-provider links** (the provider's own documentation, model card, or release post). Aggregator blogs, leaderboards, and news roundups do not count toward the minimum and must not be the sole source for any claim.
 - No benchmark scores, no pricing tables. Cost stays on the existing coarse `$`/`$$`/`$$$`/`$$$$` tiers.
+- **The research brief governs over this plan's prose.** This plan's gap analysis was written before Task 1's primary-source pass and its model names, versions and dates are pre-research paraphrases. Task 4 proved this concretely: three factual claims in its task text (an o3 retirement date, a GPT-4.5 entry, a "Gemini 3.5 Pro") were contradicted by the verified brief, and the implementer was right to override all three. Where this plan names a specific model, version or date, treat it as a pointer to look the fact up in `agent-architect/references/model-landscape-2026-09.md` — never as the fact itself. Overriding this plan on a sourced basis is correct behavior and must be reported, not silently applied.
 - No new runtime dependency. `package.json` `dependencies` stays empty; tests use only `node:test`, `node:assert/strict`, `node:fs`, `node:path`.
 - Run `npm test` before every commit and record the result in your report. This plan is TDD-ordered: Tasks 2–10 are **expected red** on the specific assertions their successor tasks satisfy, and each task names which failures are expected. No task may introduce a *new* failure outside that named set, and no task may make the suite green by weakening an assertion. Task 11 ends fully green.
 
@@ -513,15 +514,19 @@ git commit -m "docs: refresh frontier model profiles to 2026-09 primary sources"
 
 `deepseek.md` currently states the legacy alias discontinuation of 2026-07-24 as a scheduled future event. That date has passed. Move it into `### Retired / migration targets` in the past tense with its replacement.
 
-Add DeepSeek V4 and V4 Pro from the brief. Keep the existing guidance about validating structured output and tool loops on the target provider — that guidance is about deployment variance, not a specific version, so it survives.
+Add the current DeepSeek lineup **exactly as the research brief records it**. Keep the existing guidance about validating structured output and tool loops on the target provider — that guidance is about deployment variance, not a specific version, so it survives.
 
 - [ ] **Step 2: Refresh `qwen.md`**
 
-Add Qwen3-Coder-Next. Keep the template/parser/tokenizer validation guidance, which is the most load-bearing content in this profile: for self-hosted Qwen the serving stack dominates base model quality.
+Add the current Qwen lineup **exactly as the research brief records it** — do not carry forward any model name from this plan's own prose. Keep the template/parser/tokenizer validation guidance, which is the most load-bearing content in this profile: for self-hosted Qwen the serving stack dominates base model quality.
 
 - [ ] **Step 3: Refresh `meta.md`, `mistral.md`, and `cohere.md`**
 
-Meta: current Llama lineup per the brief. Mistral: add Mistral Small 4, keep Mistral Large 3. Cohere: current Command lineup, keeping the structured-output-versus-RAG-mode incompatibility if the brief confirms it still holds.
+Meta and Cohere: current lineups **exactly as the research brief records them**. For Cohere, keep the structured-output-versus-RAG-mode incompatibility only if the brief confirms it still holds.
+
+**Mistral is a known blocker.** Task 1 found two Mistral documentation pages giving conflicting model-ID conventions and verified only `mistral-large-2512`. Write no other Mistral ID. Refresh what the brief supports, record the rest as a sourcing gap in the file's existing style, and say plainly in your report that Mistral needs a dedicated re-verification pass. An honest gap here is the correct outcome; a plausible-looking ID list is not.
+
+Also fix a Task 3 carry-over while you are in this file: `cohere.md`'s H1 reads `# Command (Cohere)` but the pre-split section title was `## Command R / Cohere`. Use whichever name the refreshed content actually covers.
 
 For each, populate `### Deployment & residency` — for open-weight families the answer includes the self-host path, which is exactly what makes them viable under a residency constraint.
 
