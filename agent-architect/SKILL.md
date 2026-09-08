@@ -3,7 +3,7 @@ name: agent-architect
 version: 0.8.1
 description: |
   Senior architect review for multi-agent systems, prompt engineering, and agent harness
-  design. Three modes: AUDIT (full system evaluation with 12-dimension scoring and
+  design. Three modes: AUDIT (full system evaluation with 13-dimension scoring and
   cross-session trend tracking), REVIEW (focused prompt/skill teardown), DESIGN
   (architecture thinking partner — new systems, existing system evolution, and
   focused design questions). Persists evaluation history to track
@@ -13,12 +13,14 @@ description: |
   engineering blog and 29 cognitive patterns from production agent systems, including
   a dedicated Memory Architecture dimension covering memory typing, reconcile-on-write,
   validity windows, and eviction, plus Harness Architecture, Multimodal Architecture,
-  and Sovereignty & Residency dimensions for production AI systems. Use when asked to "review my agent", "evaluate
+  Sovereignty & Residency, and Agent Identity & Authorization dimensions for production
+  AI systems. Use when asked to "review my agent", "evaluate
   my prompts", "audit my multi-agent system", "design an agent", "design my memory
   system", "design my agent harness", "audit my voice agent", "review my MCP tools",
   "evaluate my multimodal agent", "productionize my agent", "evolve my agent",
   "should I add", "which model for", "which model should I use", "is my agent
-  compliant with data residency", "brainstorm", "help me think through", or
+  compliant with data residency", "who does my agent authenticate as", "brainstorm",
+  "help me think through", or
   "is my agent architecture good".
   Proactively invoke when the
   user shows agent code, prompt files, tool definitions, multi-agent orchestration,
@@ -169,6 +171,17 @@ Before asking any questions, read the codebase to understand what exists.
    - Output as a new line in the System Map: `Residency: [declared region(s); inference host; egress boundary] / [absent]`
    - This detection gates whether the Sovereignty & Residency checklist runs in Deep Evaluation. If absent, the dimension scores N/A and is excluded from the weighted average.
 
+2.11. **Detect delegated authority and agent identity (silent — no user interaction):**
+   - Grep for agent-held credentials: `API_KEY`, `api_key=`, `Authorization: Bearer`, `access_token`, `refresh_token`, `client_secret`, `service_account`, `PERSONAL_ACCESS_TOKEN`, session cookies — and note whether the same credential object is constructed once and passed unchanged into every tool call and spawned sub-agent
+   - Grep for delegation surfaces: sub-agent spawn and handoff calls, `langgraph`, `crewai`, `autogen`, `Agent(`, `Task(`, and tool executors that act with privilege on the model's behalf
+   - Grep for remote-agent boundaries: `a2a`, `AgentCard`, `agent card`, `.well-known/agent`, `agentregistry`, `to_mcp_server`, and MCP client code that reaches another agent rather than a tool
+   - Grep for identity-plane configuration: `entra`, `agent id`, `workload identity`, `workload_identity_federation`, `mTLS`, `X.509`, client certificates, `token exchange`, `sts`, `conditional access`, auth sidecar
+   - Classify the authorization mode where visible: **autonomous** (no user in the loop), **on-behalf-of** (acts as a specific user), **mixed**, or **unknown** — and list every entry point that reaches the agent loop (interactive, scheduled, queue consumer, webhook, retry) so the provisioned mode can be compared against the paths that actually run
+   - Note whether any component outside the model can refuse a proposed action — a broker, a policy engine, a per-action token exchange — or whether authorization rests on the model's own judgment
+   - Output as a new line in the System Map: `Agent identity: [credential type; auth mode: autonomous/on-behalf-of/mixed/unknown; external refusal point: present/absent/unknown] / [no delegated authority]`
+   - Much of the identity plane lives outside the repository (directory configuration, conditional-access policy, certificate issuance). Where the posture is not visible in code, record it as `unknown`, never as `absent` — the checklist reports the gap itself as the finding rather than assuming compliance or violation.
+   - This detection gates whether the Agent Identity & Authorization checklist runs in Deep Evaluation. If no delegated authority is found at all — no agent-held credential, no sub-agent, no remote agent, no tool that acts with privilege — the dimension scores N/A and is excluded from the weighted average.
+
 3. **Count tokens and costs:**
    - Approximate token count for each system prompt (words × 1.3)
    - Count tools per agent
@@ -229,6 +242,7 @@ Reasoning state: [preserved / dropped / not applicable / unknown]
 Modalities: [text / image / audio / voice realtime / video / computer-use / none]
 MCP/tools: [N MCP servers, M tools] — loadout: [all-in-context / dynamic search / code-mode / router / manual / unknown]
 Residency: [declared region(s); inference host; egress boundary] / [absent]
+Agent identity: [credential type; auth mode: autonomous/on-behalf-of/mixed/unknown; external refusal point: present/absent/unknown] / [no delegated authority]
 Eval infrastructure: [present / partial / absent]
 Tool count: N tools across M agents
 Estimated cost per invocation: ~$X.XX (based on model cost tiers from profiles)
@@ -420,6 +434,7 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 10. Read `checklists/memory-architecture.md` — **only if** Discovery step 2.6 detected memory or persistence (vector DB clients, mem0/letta/zep/langmem/graphiti imports, Anthropic memory tool, custom preference/profile stores, or repeated string concatenation of stored content into prompts). For deeper background on taxonomy, frameworks, reconciliation, temporal handling, and failure modes, read `references/memory-systems.md` when a finding requires justification or when DESIGN mode is exploring a memory question.
 11. Read `checklists/multimodal-architecture.md` — **only if** Discovery step 2.8 detected image, audio, voice realtime, video, computer/browser use, screenshots, generated media, or media tool outputs. For deeper background, read `references/multimodal-agents.md`.
 12. Read `checklists/sovereignty-residency.md` — **only if** Discovery step 2.10 detected regional models, region pinning, compliance markers, or region-bound self-hosted serving. Cross-reference the detected family's `### Deployment & residency` section for what the provider actually supports.
+13. Read `checklists/agent-identity.md` — **only if** Discovery step 2.11 detected delegated authority: an agent-held credential, a sub-agent or tool call acting under an inherited credential, a remote agent reached over MCP or A2A, or a hosted agent-identity platform. Where the identity plane is not visible in the repository, report the gap as the finding rather than assuming either compliance or violation.
 
 For skipped checklists, note in findings: "[Dimension] — not evaluated (not applicable to this system's architecture)."
 
@@ -560,6 +575,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | Harness Architecture | 1.5x | Runtime boundaries explicit; state ownership clear; sandbox/workspace contract present; approvals before irreversible actions, with evidence those approvals discriminate; traces and artifacts inspectable; recovery changes execution conditions | Agent loop works but state, sandbox, approvals, or artifact validation are implicit | Model-directed execution, credentials, tools, state, and artifacts are tangled in one opaque loop |
 | Multimodal Architecture | 1.0x | Turn-taking, transcript source of truth, media budgets, modality injection containment, live tool timing, fallback paths, and multimodal evals are explicit | Media works on happy path but lacks latency, fallback, or adversarial-media coverage | Voice/image/video/computer-use actions run with no modality-specific policy or validation |
 | Sovereignty & Residency | 1.0x | Residency boundary declared and enforced in code; inference, logs, traces, and eval data all respect it; model choice legally valid for the deployment; language/script coverage matches the user population; in-boundary fallback exists | Residency stated in docs but enforced only by convention; observability pipeline egresses; no in-boundary fallback | Regional obligation claimed with no technical control; inference or telemetry crosses the boundary unnoticed |
+| Agent Identity & Authorization | 1.0x | Every agent has its own principal with a live sponsor; a component outside the model can refuse a proposed action against the delegation; sub-agents receive task-scoped, short-lived credentials rather than the parent's; auth mode is provisioned and matches every entry point; remote agents' declared capabilities verified before they are trusted | Agent has its own credential but delegation scope is correct by convention rather than declaration; auth mode inferred from the executing code path; identity posture asserted in docs with nothing failing if it stops being true | Agent acts as a human's account or a shared service account with a broad bearer credential, and the only thing between that credential and its misuse is the model's own judgment |
 
 **Overall Maturity Score:** Weighted average of scored dimensions only (Prompt Architecture, Production Readiness, Agent Security, and Harness Architecture count 1.5x, all others 1.0x). Dimensions marked N/A are excluded from the weighted average.
 
@@ -595,6 +611,7 @@ Score each applicable dimension 1-10 using the rubric below. Dimensions that wer
 | 10. Harness Architecture   | N/10 or N/A | [1-line summary or "Not applicable"] |
 | 11. Multimodal Architecture | N/10 or N/A | [1-line summary or "Not applicable — text-only"] |
 | 12. Sovereignty & Residency | N/10 or N/A | [1-line summary or "Not applicable — no residency constraint"] |
+| 13. Agent Identity & Authorization | N/10 or N/A | [1-line summary or "Not applicable — no delegated authority"] |
 +--------------------------------------------------------------------+
 | OVERALL MATURITY           | N.N/10 — [maturity level label]        |
 +--------------------------------------------------------------------+
@@ -650,6 +667,7 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 | Harness Architecture     | N → N          | ↑/→/↓ | [1-line why]    |
 | Multimodal Architecture  | N → N          | ↑/→/↓ | [1-line why]    |
 | Sovereignty & Residency  | N → N          | ↑/→/↓ | [1-line why]    |
+| Agent Identity & Auth.   | N → N          | ↑/→/↓ | [1-line why]    |
 +--------------------------------------------------------------------+
 | Overall                  | N.N → N.N      | ↑/→/↓ |                 |
 +--------------------------------------------------------------------+
@@ -660,7 +678,9 @@ TREND (branch: `[current_branch]` — vs. [previous date])
 
 Evaluations recorded before skill version 0.8.0 have no Sovereignty & Residency
 score. Render the row as `— → N` with the note "new dimension in 0.8.0". Do not
-report its appearance as a regression.
+report its appearance as a regression. The same applies to Agent Identity &
+Authorization for evaluations recorded before skill version 0.9.0 — render `— → N`
+with the note "new dimension in 0.9.0".
 
 - For "past recommendations addressed": compare today's findings against the same-branch previous evaluation's top 3 recommendations. If a recommendation's corresponding finding no longer appears, mark it as addressed.
 - Any REGRESSION (dimension score dropped) gets called out with a 1-line note explaining the likely cause based on the findings diff.
