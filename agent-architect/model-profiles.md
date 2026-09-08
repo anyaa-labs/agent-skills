@@ -60,32 +60,46 @@ If an API ID matches a family but not a specific version in the profile, apply f
 
 ## Family Index
 
-| Family | Profile | Tier | Researched |
-|---|---|---|---|
-| Claude (Anthropic) | `model-profiles/anthropic.md` | frontier | 2026-09-08 |
-| GPT / reasoning / realtime / gpt-oss (OpenAI) | `model-profiles/openai.md` | frontier | 2026-09-08 |
-| Gemini / Gemma (Google) | `model-profiles/google.md` | frontier | 2026-09-08 |
-| Grok (xAI) | `model-profiles/xai.md` | frontier | 2026-09-08 |
-| Nova (Amazon) | `model-profiles/amazon-nova.md` | frontier | 2026-09-08 |
-| DeepSeek | `model-profiles/deepseek.md` | open-weight | 2026-09-08 |
-| Qwen | `model-profiles/qwen.md` | open-weight | 2026-09-08 |
-| Llama (Meta) | `model-profiles/meta.md` | open-weight | 2026-09-08 |
-| Mistral | `model-profiles/mistral.md` | open-weight | 2026-09-08 |
-| Command (Cohere) | `model-profiles/cohere.md` | open-weight | 2026-09-08 |
-| Kimi (Moonshot AI) | `model-profiles/moonshot.md` | open-weight | 2026-09-08 |
-| GLM (Zhipu AI / Z.ai) | `model-profiles/zhipu.md` | open-weight | 2026-09-08 |
-| MiniMax | `model-profiles/minimax.md` | open-weight | 2026-09-08 |
-| Granite (IBM) | `model-profiles/ibm-granite.md` | open-weight | 2026-09-08 |
-| Jamba (AI21 Labs) | `model-profiles/ai21.md` | open-weight | 2026-09-08 |
-| Nemotron (Nvidia) | `model-profiles/nvidia-nemotron.md` | open-weight | 2026-09-08 |
-| OLMo (Ai2) | `model-profiles/ai2-olmo.md` | open-weight | 2026-09-08 |
-| Sarvam AI (India) | `model-profiles/sarvam.md` | regional | 2026-09-08 |
-| Falcon / TII (UAE) | `model-profiles/falcon.md` | regional | 2026-09-08 |
-| Regional — other (Jais, ALLaM, K2, SEA-LION, HyperCLOVA X, Upstage Solar) | `model-profiles/regional-other.md` | regional | 2026-09-08 |
+| Family | Profile | Access | Scope | Researched |
+|---|---|---|---|---|
+| Claude (Anthropic) | `model-profiles/anthropic.md` | api-only | global | 2026-09-08 |
+| Grok (xAI) | `model-profiles/xai.md` | api-only | global | 2026-09-08 |
+| Nova (Amazon) | `model-profiles/amazon-nova.md` | api-only | global | 2026-09-08 |
+| GPT / reasoning / realtime / gpt-oss (OpenAI) | `model-profiles/openai.md` | open-weight | global | 2026-09-08 |
+| Gemini / Gemma (Google) | `model-profiles/google.md` | open-weight | global | 2026-09-08 |
+| DeepSeek | `model-profiles/deepseek.md` | open-weight | global | 2026-09-08 |
+| Qwen | `model-profiles/qwen.md` | open-weight | global | 2026-09-08 |
+| Llama (Meta) | `model-profiles/meta.md` | open-weight | global | 2026-09-08 |
+| Mistral | `model-profiles/mistral.md` | open-weight | global | 2026-09-08 |
+| Command (Cohere) | `model-profiles/cohere.md` | open-weight | global | 2026-09-08 |
+| Kimi (Moonshot AI) | `model-profiles/moonshot.md` | open-weight | global | 2026-09-08 |
+| GLM (Zhipu AI / Z.ai) | `model-profiles/zhipu.md` | open-weight | global | 2026-09-08 |
+| MiniMax | `model-profiles/minimax.md` | open-weight | global | 2026-09-08 |
+| Granite (IBM) | `model-profiles/ibm-granite.md` | open-weight | global | 2026-09-08 |
+| Jamba (AI21 Labs) | `model-profiles/ai21.md` | open-weight | global | 2026-09-08 |
+| Nemotron (Nvidia) | `model-profiles/nvidia-nemotron.md` | open-weight | global | 2026-09-08 |
+| OLMo (Ai2) | `model-profiles/ai2-olmo.md` | open-weight | global | 2026-09-08 |
+| Sarvam AI (India) | `model-profiles/sarvam.md` | open-weight | regional | 2026-09-08 |
+| Falcon / TII (UAE) | `model-profiles/falcon.md` | open-weight | regional | 2026-09-08 |
+| Regional — other (Jais, ALLaM, K2, SEA-LION, HyperCLOVA X, Upstage Solar) | `model-profiles/regional-other.md` | open-weight | regional | 2026-09-08 |
 
-**Regional tier.** These models are selected for residency, language coverage, or
-sovereignty obligations as often as for capability. When one is detected, the
-Sovereignty & Residency dimension applies — see `checklists/sovereignty-residency.md`.
+**Reading the two axes.** They are orthogonal, and a family can be anything on
+both. `access` is whether the weights of at least one current model are
+obtainable — `open-weight` means self-hosting is on the table (which is often the
+only way to satisfy a hard residency obligation), `api-only` means it is not.
+`scope` is *why* a family gets selected: `regional` families are chosen for
+residency, language coverage, or sovereignty obligations as often as for
+capability, and detecting one makes the Sovereignty & Residency dimension apply —
+see `checklists/sovereignty-residency.md`.
+
+Splitting these apart is what lets Falcon be honestly `open-weight` **and**
+`regional` at once; under the old single `tier` field it had to be filed as one or
+the other, and the discarded half was exactly the fact an audit needed.
+
+**Capability positioning is deliberately not recorded here.** "Frontier" is the
+fastest-rotting claim this index could carry, and this data layer exists to stop
+shipping facts that expire. For cost, use the cost tiers above and the per-model
+annotations inside each family profile.
 
 **Folded-in open-weight lines:** OpenAI's open-weight `gpt-oss` family and Google's `Gemma` family are documented as subsections inside `openai.md` and `google.md` respectively, rather than as separate family files — same vendor, no separate profile file needed.
 

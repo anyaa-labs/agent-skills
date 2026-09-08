@@ -1,6 +1,7 @@
 ---
 family: amazon-nova
-tier: frontier
+access: api-only
+scope: global
 researched_date: 2026-09-08
 ---
 

@@ -1,6 +1,7 @@
 ---
 family: openai
-tier: frontier
+access: open-weight
+scope: global
 researched_date: 2026-09-08
 ---
 

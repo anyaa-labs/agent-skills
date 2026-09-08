@@ -21,7 +21,29 @@ const REQUIRED_HEADINGS = [
   '### Re-evaluate when',
 ];
 
-const VALID_TIERS = new Set(['frontier', 'open-weight', 'regional']);
+// `tier` used to mix three unrelated axes into one word: `frontier` described
+// market positioning, `open-weight` described licensing, `regional` described
+// geography. Families that were two of those at once had to pick one — Falcon is
+// open-weight AND regional, Nova is API-only AND frontier — so the field lost
+// information exactly where it mattered most. Split into two orthogonal axes,
+// each answering a question an audit actually asks.
+//
+// `access` answers: can this family be self-hosted? That is the question the
+// Sovereignty & Residency dimension needs, and it is binary. A family counts as
+// open-weight if the weights of at least one current model are obtainable —
+// OpenAI qualifies through gpt-oss and Google through Gemma, with the nuance in
+// each profile's own open-weight subsection.
+const VALID_ACCESS = new Set(['api-only', 'open-weight']);
+
+// `scope` answers: is this family selected for residency, language coverage or
+// sovereignty obligations rather than on capability and cost alone? `regional`
+// is what triggers the Sovereignty & Residency dimension.
+const VALID_SCOPE = new Set(['global', 'regional']);
+
+// Deliberately NOT a frontmatter field: capability positioning. "Frontier" is the
+// most perishable claim we could store — today's frontier is next year's mid-tier
+// — and this refresh exists to stop shipping facts that rot. Cost lives in the
+// index's cost-tier table and in per-model annotations inside each profile.
 
 const familyFiles = () =>
   fs.readdirSync(PROFILE_DIR).filter((f) => f.endsWith('.md')).sort();
@@ -62,7 +84,18 @@ test('every family file has valid frontmatter', () => {
     const fm = parseFrontmatter(readProfile(file));
     assert.ok(fm, `${file}: missing YAML frontmatter`);
     assert.ok(fm.family, `${file}: missing 'family'`);
-    assert.ok(VALID_TIERS.has(fm.tier), `${file}: tier '${fm.tier}' not one of ${[...VALID_TIERS]}`);
+    assert.ok(
+      VALID_ACCESS.has(fm.access),
+      `${file}: access '${fm.access}' not one of ${[...VALID_ACCESS]}`,
+    );
+    assert.ok(
+      VALID_SCOPE.has(fm.scope),
+      `${file}: scope '${fm.scope}' not one of ${[...VALID_SCOPE]}`,
+    );
+    assert.ok(
+      !('tier' in fm),
+      `${file}: 'tier' was split into 'access' and 'scope' — remove the old field`,
+    );
     assert.match(fm.researched_date ?? '', /^\d{4}-\d{2}-\d{2}$/, `${file}: researched_date must be YYYY-MM-DD`);
   }
 });

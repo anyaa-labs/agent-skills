@@ -915,12 +915,13 @@ Use WebSearch to find:
 Create `~/.agent-skills/local/agent-architect/model-research/` directory if it doesn't exist.
 Write findings to `~/.agent-skills/local/agent-architect/model-research/{model-slug}.md`.
 
-**A cached profile must be readable by exactly the same machinery as a shipped one.** Use the shipped frontmatter shape (`family`, `tier`, `researched_date` — the fields `tests/model_profiles.test.mjs` enforces on `model-profiles/*.md`), plus the two provenance fields that mark it as web-researched rather than primary-sourced:
+**A cached profile must be readable by exactly the same machinery as a shipped one.** Use the shipped frontmatter shape (`family`, `access`, `scope`, `researched_date` — the fields `tests/model_profiles.test.mjs` enforces on `model-profiles/*.md`), plus the two provenance fields that mark it as web-researched rather than primary-sourced:
 
 ```yaml
 ---
 family: [family slug — matches the model-profiles/ filename convention]
-tier: [frontier | open-weight | regional]
+access: [api-only | open-weight]   # can at least one current model be self-hosted?
+scope: [global | regional]         # selected for residency/language/sovereignty reasons?
 researched_date: [YYYY-MM-DD]
 source: web-search
 confidence_note: Based on web research, not production-verified
