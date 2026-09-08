@@ -21,6 +21,13 @@ const MODEL_VERSION_PATTERNS = [
   { name: 'claude-version', re: /\bclaude-(opus|sonnet|haiku|fable|mythos)-?[0-9]/i },
   { name: 'gemini-version', re: /\bgemini[- ][0-9]/i },
   { name: 'gemma-version', re: /\bgemma[- ]?[0-9]/i },
+  // Covers `grok-4.6`, `Grok 4.6`, `grok-build-0.1`, `grok-imagine-image-2.0`,
+  // `grok-voice-think-fast-2.0`, and the retired `grok-3` / `grok-code-fast-1` slugs.
+  { name: 'grok-version', re: /\bgrok[\w.-]*[ -]\d/i },
+  // Nova IDs carry a generation digit (`nova-2-lite`) or a named tier
+  // (`nova-premier`, `amazon.nova-pro-v1:0`), so match both shapes rather than
+  // the bare word `nova`, which has ordinary English uses.
+  { name: 'nova-version', re: /\b(amazon\.nova|nova[- ](?:2|premier|pro|lite|micro|sonic|canvas|reel)\b)/i },
   // --- open-weight ---
   { name: 'deepseek-version', re: /\bdeepseek[- ](chat|reasoner|v[0-9]|r[0-9])/i },
   { name: 'llama-version', re: /\bllama[- ]?[0-9]/i },
@@ -31,6 +38,12 @@ const MODEL_VERSION_PATTERNS = [
   { name: 'zhipu-version', re: /\b(glm|chatglm)[- ]?[0-9]/i },
   { name: 'minimax-version', re: /\b(minimax|abab)[- ]?[a-z]?[0-9]/i },
   { name: 'granite-version', re: /\bgranite[- ]?[0-9]/i },
+  // `jamba-large` / `jamba-mini` carry no version digit, and none of these three
+  // family names has an ordinary English use, so match the bare name — the same
+  // shape as the `command-r` pattern above.
+  { name: 'jamba-version', re: /\b(jamba|ai21)\b/i },
+  { name: 'nemotron-version', re: /\bnemotron\b/i },
+  { name: 'olmo-version', re: /\bolmo\b/i },
   // --- regional ---
   { name: 'sarvam-version', re: /\bsarvam[- ]?[a-z]?[0-9]/i },
   { name: 'falcon-version', re: /\bfalcon[- ]?[a-z]?[0-9]/i },

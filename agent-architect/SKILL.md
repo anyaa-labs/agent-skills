@@ -122,7 +122,7 @@ Before asking any questions, read the codebase to understand what exists.
 
 2.5. **Detect models used (silent — no user interaction):**
    - Search for model identifiers in code, config, and env files
-   - Grep for: `claude`, `gpt`, `gemini`, `llama`, `mistral`, `deepseek`, `command-r`, `cohere`, `qwen`, `yi-`, `granite`, `kimi`, `moonshot`, `glm`, `minimax`, `sarvam`, `falcon`, `jais`, `allam`, `sea-lion`, `hyperclova`, `solar`
+   - Grep for: `claude`, `gpt`, `gemini`, `llama`, `mistral`, `deepseek`, `command-r`, `cohere`, `qwen`, `yi-`, `granite`, `kimi`, `moonshot`, `glm`, `minimax`, `sarvam`, `falcon`, `jais`, `allam`, `sea-lion`, `hyperclova`, `solar`, `grok`, `x.ai`, `nova`, `jamba`, `ai21`, `nemotron`, `olmo`
    - Also check: SDK client constructors, model config objects, API endpoint URLs
    - Extract specific version strings where possible (e.g., `gpt-4.1`, not just `gpt`)
    - For each detected model, silently resolve knowledge status:
@@ -757,7 +757,7 @@ Ask via AskUserQuestion, **ONE AT A TIME**. Each question has a RECOMMENDATION b
 
 5. **What is the volume?** 10/day (prototype) vs. 10K/day (production) vs. 10M/day (scale)?
 
-6. **What model(s) are you planning to use?** Or: are you open to model recommendations? (Read the index at `model-profiles.md` to pick candidates, then read the two or three `model-profiles/<family>.md` files the use case actually implicates — the index holds the family table, API-ID prefix mapping, cost tiers and staleness protocol, but **no capability, context-window, or tool-semantics facts**. Ground the recommendation in those family files, not in recollection. Load only the families the use case implicates — not all 15.)
+6. **What model(s) are you planning to use?** Or: are you open to model recommendations? (Read the index at `model-profiles.md` to pick candidates, then read the two or three `model-profiles/<family>.md` files the use case actually implicates — the index holds the family table, API-ID prefix mapping, cost tiers and staleness protocol, but **no capability, context-window, or tool-semantics facts**. Ground the recommendation in those family files, not in recollection. Load only the families the use case implicates — not all 20.)
 
 **Smart-skip:** If the user's initial description already answers a question, skip it. Only ask questions whose answers are not yet clear.
 
@@ -844,7 +844,7 @@ When working with an existing system, operate as a thinking partner, not an eval
 1. Ground every recommendation in Discovery findings — reference specific files, agent count, token sizes, cost estimates, detected models.
 2. Apply the Iron Law: if recommending complexity, demonstrate the concrete failure case where the simpler version breaks. If the simpler version doesn't demonstrably fail, say so.
 3. Reference evaluation history when available — "Your eval infrastructure scored 3/10 last audit. Before adding complexity, consider measuring what you have."
-4. For model questions, read the family profile itself (`model-profiles/<family>.md`, found via the index at `model-profiles.md`) — the index alone carries no capability, context-window, or tool-semantics facts. When Discovery detected a model, load that family's file. When it detected none (a greenfield or comparative "which model should I use" question), use the index's family table and cost tiers to pick the two or three families the use case implicates, then load those files. Do not load all 15, and do not answer from recollection. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
+4. For model questions, read the family profile itself (`model-profiles/<family>.md`, found via the index at `model-profiles.md`) — the index alone carries no capability, context-window, or tool-semantics facts. When Discovery detected a model, load that family's file. When it detected none (a greenfield or comparative "which model should I use" question), use the index's family table and cost tiers to pick the two or three families the use case implicates, then load those files. Do not load all 20, and do not answer from recollection. If a model is UNKNOWN or STALE, follow the Unknown Model Protocol (ask user before web research) — do not give model-specific advice without a profile.
 5. End each response with a follow-up question or decision prompt. The user can switch topics freely.
 6. Every recommendation must be concrete: not "it depends" but "if X, do Y; if Z, do W."
 
