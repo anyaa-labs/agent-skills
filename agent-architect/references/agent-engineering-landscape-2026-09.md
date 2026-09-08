@@ -30,6 +30,18 @@ Where a theme is dated outside the 2026-06-08..2026-09-08 window it is marked
 `[PRE-WINDOW: <date>]`. Those are included only where something inside the window depends
 on them.
 
+## When two sweeps disagree
+
+The five sweeps ran independently and were concatenated, so they can disagree — and one
+did. **The sweep holding the earlier primary source wins on questions of attribution and
+precedence**, because the later sweep's author had no way to see it. The one known
+instance is the "loop engineering" coinage, reconciled inline in the Anthropic sweep's
+theme 2 and governed by the practitioner sweep's terms-of-art entry.
+
+If you find another conflict, resolve it the same way and **annotate both sides** rather
+than deleting one. A source of truth that silently contradicts itself is worse than one
+that shows its working.
+
 ---
 
 
@@ -51,7 +63,7 @@ on them.
 
 ### 2. Loop engineering — the new vocabulary for agent automation depth
 - **What changed:** Anthropic's Claude Code team published a taxonomy of four loop types: turn-based (manual, one prompt = one loop), goal-based (`/goal`, an evaluator model checks a stated completion condition and continues until met or a turn cap), time-based (`/loop`, `/schedule`, recurring on an interval), and proactive (event/schedule-triggered, no human in the loop). The `/goal` command shipped as a Claude Code feature (see Week 20 changelog, "Week 20" May 11–15 2026) and was retroactively framed as "loop engineering" in the June 30, 2026 post.
-- **Term of art:** **"Loop engineering"** — coined/popularized via Anthropic's own blog post title "Loop engineering: Getting started with loops" (Delba de Oliveira, Michael Segner). Community amplification: Boris Cherny (Claude Code creator) said he no longer prompts Claude directly, only "writes loops" (reported by The New Stack and Pragmatic Engineer, not primary-sourced beyond the claude.com post itself for the rung taxonomy).
+- **Term of art:** **"Loop engineering"** — Anthropic published "Loop engineering: Getting started with loops" (Delba de Oliveira, Michael Segner) and it is the primary source for the four-rung taxonomy. **It is NOT the origin of the term, and this sweep asserts no coiner.** *(Reconciled across sweeps: this entry originally read "coined/popularized via Anthropic's own blog post title." The practitioner sweep found an earlier primary long-form use — Addy Osmani, 2026-06-07, three weeks before the Anthropic post — which itself claims no coinage, and could not verify the widely-credited origin post. See the practitioner sweep's "Loop engineering" terms-of-art entry, which governs on attribution. **Do not credit a coiner.**)* Community amplification: Boris Cherny (Claude Code creator) said he no longer prompts Claude directly, only "writes loops" (reported by The New Stack and Pragmatic Engineer, not primary-sourced beyond the claude.com post itself for the rung taxonomy).
 - **Audit implication:** For a target system with recurring/autonomous agent invocation, identify which rung it occupies (manual turn / goal-checked / scheduled / event-proactive) and check whether the stop condition is: (a) explicit and machine-checkable (goal-based — verify an evaluator model or test suite grades completion, not the same model self-grading), (b) turn-capped, and (c) whether time-based/proactive loops have a kill-switch and cost ceiling, since they run unattended.
 - **Maps to:** NEW pattern candidate — sits next to The Recovery Ladder and Cost as Architecture; also relevant to The Evaluation Asymmetry (goal-based loops delegate "good enough" judgment to a separate evaluator specifically to avoid self-assessment bias).
 - **Sources:**
