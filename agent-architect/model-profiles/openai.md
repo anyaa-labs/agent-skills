@@ -12,6 +12,9 @@ researched_date: 2026-09-08
 - The Responses API is the documented surface for current models. OpenAI's own migration guide states plainly: **"Starting with GPT-5.4, Chat Completions does not support tool calling with `reasoning_effort` values other than `none`."** Chat Completions still exists and still does function calling, but not while reasoning effort is active — for any agentic system on a current OpenAI reasoning model, Responses is effectively mandatory.
 - Use Agents SDK when application code owns orchestration, state, tools, approvals, handoffs, guardrails, or tracing.
 - Use sandbox agents when files, commands, packages, ports, artifacts, snapshots, mounts, or human review are part of the product.
+- **Agents SDK behaviour is version-gated, and two 2026 releases changed what a "safe default" is.** `openai-agents` **v0.22.0** (2026-08-19) began redacting terminal function-tool output rejected by agent output guardrails from replayable and persisted SDK state, and made non-streaming Responses that terminate `failed`/`incomplete` raise `ModelBehaviorError` instead of returning silently. **Any pin below v0.22.0 can leak guardrail-blocked tool output into its own trace/replay/persistence layer** — the state store meant for debugging or resumption ends up holding exactly the content the output guardrail was supposed to stop.
+- **`openai-agents` v0.20.0 (2026-08-11) quietly changed the SDK's implicit default model to `gpt-5.6-luna`, with no major version bump.** This is a live instance of harness expiry: the harness's own bug fixes and defaults redefine what a safe configuration looks like, on a release timeline the application team is usually not tracking. Check the pinned SDK version, and check that the app names its model explicitly instead of inheriting the SDK default.
+- **Rate-limit and spend failures are now three distinguishable conditions, not one.** Hard spend limits rolled out to all API Platform accounts the week of 2026-07-22: with "Enforce a hard limit" on, requests fail with a 429 carrying `organization_spend_limit_exceeded` or `project_spend_limit_exceeded` once tracked spend crosses the ceiling (enforcement is not instantaneous, so actual spend can slightly overshoot). Separately, on 2026-09-02 OpenAI split rate-limit semantics into the caller's own traffic rate (429, code `slow_down`) and model overload on OpenAI's side (503, code `server_is_overloaded`). **The spend-limit codes are terminal — they need a human or billing action, not a retry** — so a loop that treats every 429 alike will hammer a hard-capped account and burn latency for nothing, while `slow_down` (back off the caller's own request rate) and `server_is_overloaded` (transient vendor-side, retry with backoff) need different strategies from each other too.
 - **The Agent Builder product, the Evals dashboard, and the `/v1/prompts` reusable-prompts API are being shut down** (announced 2026-06-03, sunset 2026-10-31 → 2026-11-30 depending on component). Any architecture guidance that assumed OpenAI Agent Builder as a harness option is stale — plan a migration to Agents SDK or a custom orchestration layer instead.
 
 ### Reasoning state
@@ -58,6 +61,7 @@ This is the dominant failure mode in OpenAI agent loops:
 - **Regional processing can be selected per request, not only per project.** OpenAI: "As an alternative to creating a region-specific project, you can select regional processing for an individual request by using the prefixed domain with an API key from a project having Global geography" — e.g. `us.api.openai.com` / `eu.api.openai.com`. Eligibility and retention requirements still apply, and the selected endpoint *and* model must support regional processing.
 - **Audit consequence: "our project is EU-pinned" is no longer a sufficient answer.** Residency is now determined by the base URL each call actually uses, so a single Global-geography key can emit both in-boundary and out-of-boundary traffic depending on which client instance issued the request. Check the base URL at every call site, not just the project's geography setting — and treat a mixed-residency workload sharing one Global key as the specific shape to look for.
 - Zero Data Retention excludes customer content from abuse-monitoring logs and **forces `store` to be treated as `false` even when the request sets it to `true`**. Requires prior OpenAI approval.
+- **mTLS and X.509 workload identity federation reached GA on 2026-08-29**, with certificates and identity providers configurable directly in the Platform console — an alternative to bearer-token API keys for service-to-service authentication. A leaked long-lived bearer key is a larger blast radius than a short-lived, certificate-bound identity, so for a production system check which path server-to-OpenAI auth actually uses rather than assuming the key is the only option.
 - Responses API default retention is **30 days** when `store` is omitted or true. Background mode stores data for roughly 10 minutes to enable polling.
 
 ### Version-specific notes
@@ -78,6 +82,10 @@ This is the dominant failure mode in OpenAI agent loops:
 - Legacy prompt scaffolding retained after a model upgrade without eval — especially scaffolding built around the GPT-5 (pre-5.6) or o3 generation, which is deprecated but not shut down until 2026-12-11.
 - Harness code still targets Agent Builder, the Evals dashboard, or `/v1/prompts` after their announced shutdown.
 - A UAE deployment assumes regional *processing* everywhere the region is listed for residency, when in fact only three models on three endpoints qualify.
+- `openai-agents` pinned below v0.22.0, so guardrail-rejected terminal tool output can still reach the trace, replay, and persistence layers.
+- The Agents SDK's implicit default model relied on instead of an explicit model pin — v0.20.0 changed that default without a major version bump, and nothing in the app would have surfaced the swap.
+- A retry layer that treats `organization_spend_limit_exceeded` / `project_spend_limit_exceeded` as retryable, or that collapses `slow_down` (429) and `server_is_overloaded` (503) into one undifferentiated backoff.
+- Server-to-OpenAI authentication resting solely on a long-lived bearer key now that mTLS / X.509 workload identity federation is GA.
 
 ### Harness requirements
 
@@ -86,6 +94,8 @@ This is the dominant failure mode in OpenAI agent loops:
 - Use sandbox agents when files, commands, packages, ports, artifacts, snapshots, mounts, or human review are part of the product.
 - For realtime voice, define turn-taking, transcript source of truth, tool timing, and fallback channels.
 - Before relying on `tool_search`, confirm the model is `gpt-5.4` or later.
+- Pin `openai-agents` at v0.22.0 or later, and pin the model explicitly rather than inheriting whatever default the SDK version ships with.
+- Branch the retry layer on error code: spend-limit 429s are terminal and need billing/human action, `slow_down` means throttle the caller's own rate, and `server_is_overloaded` (503) is the transient vendor-side case where retry-with-backoff is the right response.
 - Before deploying to a non-US, non-EU, non-UAE region, confirm whether the requirement is data *storage* or data *processing* — OpenAI's residency page only guarantees the former outside those three regions.
 
 ### Retired / migration targets
@@ -113,6 +123,9 @@ This is the dominant failure mode in OpenAI agent loops:
 - Adding realtime voice or hosted/sandbox tools.
 - Changing storage mode, ZDR, or stateless conversation handling.
 - Any harness dependency on Agent Builder, the Evals dashboard, or `/v1/prompts` — these are being shut down.
+- Upgrading, or first pinning, the `openai-agents` SDK — its releases have changed both guardrail redaction and the implicit default model.
+- Turning on a hard spend limit, or touching the retry/backoff layer at all.
+- Moving server-to-OpenAI authentication to (or away from) mTLS / X.509 workload identity.
 
 ### Open-weight: gpt-oss
 
@@ -134,6 +147,8 @@ Folded into this profile rather than a separate family file — same vendor, and
 - [Tools guide](https://developers.openai.com/api/docs/guides/tools)
 - [Migrate to Responses](https://developers.openai.com/api/docs/guides/migrate-to-responses)
 - [Your data](https://developers.openai.com/api/docs/guides/your-data)
+- [OpenAI API changelog](https://developers.openai.com/api/docs/changelog)
+- [openai-agents-python releases](https://github.com/openai/openai-agents-python/releases)
 - [OpenAI HuggingFace org](https://huggingface.co/openai)
 - [gpt-oss-120b](https://huggingface.co/openai/gpt-oss-120b)
 - [gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)
