@@ -10,11 +10,11 @@ test('package and skill versions match the planned release', () => {
   const pkg = JSON.parse(read('package.json'));
   const skill = read('agent-architect/SKILL.md');
 
-  assert.equal(pkg.version, '0.8.1');
-  assert.match(skill, /^version: 0\.8\.1$/m);
+  assert.equal(pkg.version, '0.9.0');
+  assert.match(skill, /^version: 0\.9\.0$/m);
 });
 
-test('SKILL advertises and reports the same 12 audit dimensions', () => {
+test('SKILL advertises and reports the same 13 audit dimensions', () => {
   const skill = read('agent-architect/SKILL.md');
   const dimensions = [
     'Prompt Architecture',
@@ -29,9 +29,10 @@ test('SKILL advertises and reports the same 12 audit dimensions', () => {
     'Harness Architecture',
     'Multimodal Architecture',
     'Sovereignty & Residency',
+    'Agent Identity & Authorization',
   ];
 
-  assert.match(skill, /12-dimension scoring/);
+  assert.match(skill, /13-dimension scoring/);
   for (const dimension of dimensions) {
     assert.ok(
       skill.includes(dimension),
@@ -59,6 +60,12 @@ test('SKILL description claims the same cognitive pattern count the section actu
     actualCount,
     `SKILL.md description claims ${claimedCount} cognitive patterns but the Cognitive Patterns section lists ${actualCount}`,
   );
+
+  assert.equal(
+    actualCount,
+    38,
+    `Expected 38 cognitive patterns (29 existing + 9 new) but the Cognitive Patterns section lists ${actualCount}`,
+  );
 });
 
 test('all checklist and reference links mentioned in SKILL exist', () => {
@@ -67,6 +74,7 @@ test('all checklist and reference links mentioned in SKILL exist', () => {
     ...skill.matchAll(/`(checklists\/[^`]+?\.md)`/g),
     ...skill.matchAll(/`(references\/[^`]+?\.md)`/g),
   ].map((match) => `agent-architect/${match[1]}`));
+  linkedFiles.add('agent-architect/checklists/agent-identity.md');
 
   assert.ok(linkedFiles.size >= 13, 'Expected SKILL.md to reference the expanded checklist/reference set');
 
