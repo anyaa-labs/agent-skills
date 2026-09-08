@@ -26,7 +26,7 @@ Every profile includes:
 
 **API ID to family mapping:** Model strings in code often differ from marketing names. Match by prefix/substring, **evaluated top to bottom — first match wins**. The order is load-bearing: derived models carry their base model's name (`llama-3.3-nemotron-super-49b` is a Nvidia model wearing a Meta prefix), so the narrower vendor patterns are listed above the broader base-family ones. Do not reorder these lines alphabetically.
 
-- `gpt-5*`, `gpt-6*`, `gpt-realtime*`, `o*`, `gpt-*`, `openai/gpt-oss*` -> `model-profiles/openai.md`
+- `gpt-5*`, `gpt-6*`, `gpt-realtime*`, `o[1-9]*`, `gpt-*`, `openai/gpt-oss*` -> `model-profiles/openai.md`
 - `claude-opus-4-*`, `claude-sonnet-4-*`, `claude-haiku-4-*`, `claude-fable-*`, `claude-mythos-*`, `claude-*`, `anthropic.*` -> `model-profiles/anthropic.md`
 - `gemini-3*`, `gemini-2.5*`, `gemini-*`, `gemma-*`, `google/gemma*` -> `model-profiles/google.md`
 - `grok-4*`, `grok-build-*`, `grok-imagine-*`, `grok-voice-*`, `grok-*`, `xai/*`, `xai-*` -> `model-profiles/xai.md`
@@ -114,4 +114,3 @@ Each family file carries `researched_date`. Compare it against today:
 - **≤ 90 days** — use the profile as authoritative.
 - **> 90 days** — mark the family STALE in the System Map, and offer live verification via the Unknown Model Protocol (Step 2 onward). Findings derived from a stale profile carry the caveat: "Based on a profile last verified [date]; provider behavior may have changed."
 - **> 180 days** — the contract test fails. The profile must be re-researched before release.
-

@@ -5,62 +5,63 @@ import test from 'node:test';
 
 const root = path.resolve(import.meta.dirname, '..');
 const CHECKLIST_DIR = path.join(root, 'agent-architect/checklists');
+const PROFILE_DIR = path.join(root, 'agent-architect/model-profiles');
 
 // A line may keep a model-version string only if it carries this marker,
 // with a stated reason. Everything else belongs in a family profile.
 const ALLOW_MARKER = /<!--\s*model-ref-ok:\s*\S+/;
 
-// One pattern per family in agent-architect/model-profiles/, so the guard's
-// coverage tracks the data layer instead of lagging behind it. When a family
-// file is added, add its version pattern here.
+// Every profile family must be represented here. The coverage assertion below
+// makes adding a profile without updating this guard a test failure.
 const MODEL_VERSION_PATTERNS = [
   // --- frontier ---
-  { name: 'openai-version', re: /\bgpt-[0-9]/i },
-  { name: 'openai-o-series', re: /\bo[1-9]\b(?!\w)/ },
-  { name: 'openai-oss-version', re: /\bgpt-oss\b/i },
-  { name: 'claude-version', re: /\bclaude-(opus|sonnet|haiku|fable|mythos)-?[0-9]/i },
-  { name: 'gemini-version', re: /\bgemini[- ][0-9]/i },
-  { name: 'gemma-version', re: /\bgemma[- ]?[0-9]/i },
+  { name: 'openai-version', families: ['openai'], re: /\bgpt-[0-9]/i },
+  { name: 'openai-o-series', families: ['openai'], re: /\bo[1-9]\b(?!\w)/ },
+  { name: 'openai-oss-version', families: ['openai'], re: /\bgpt-oss\b/i },
+  { name: 'claude-version', families: ['anthropic'], re: /\bclaude-(opus|sonnet|haiku|fable|mythos)-?[0-9]/i },
+  { name: 'gemini-version', families: ['google'], re: /\bgemini[- ][0-9]/i },
+  { name: 'gemma-version', families: ['google'], re: /\bgemma[- ]?[0-9]/i },
   // Covers `grok-4.6`, `Grok 4.6`, `grok-build-0.1`, `grok-imagine-image-2.0`,
   // `grok-voice-think-fast-2.0`, and the retired `grok-3` / `grok-code-fast-1` slugs.
-  { name: 'grok-version', re: /\bgrok[\w.-]*[ -]\d/i },
+  { name: 'grok-version', families: ['xai'], re: /\bgrok[\w.-]*[ -]\d/i },
   // Nova IDs carry a generation digit (`nova-2-lite`) or a named tier
   // (`nova-premier`, `amazon.nova-pro-v1:0`), so match both shapes rather than
   // the bare word `nova`, which has ordinary English uses.
-  { name: 'nova-version', re: /\b(amazon\.nova|nova[- ](?:2|premier|pro|lite|micro|sonic|canvas|reel)\b)/i },
+  { name: 'nova-version', families: ['amazon-nova'], re: /\b(amazon\.nova|nova[- ](?:2|premier|pro|lite|micro|sonic|canvas|reel)\b)/i },
   // --- open-weight ---
-  { name: 'deepseek-version', re: /\bdeepseek[- ](chat|reasoner|v[0-9]|r[0-9])/i },
-  { name: 'llama-version', re: /\bllama[- ]?[0-9]/i },
-  { name: 'qwen-version', re: /\bqwen[- ]?[0-9]/i },
-  { name: 'mistral-version', re: /\b(mistral (large|small|medium) [0-9]|mistral-[a-z]*-?[0-9]{4}|codestral[- ]?[0-9])/i },
+  { name: 'deepseek-version', families: ['deepseek'], re: /\bdeepseek[- ](chat|reasoner|v[0-9]|r[0-9])/i },
+  { name: 'llama-version', families: ['meta'], re: /\bllama[- ]?[0-9]/i },
+  { name: 'qwen-version', families: ['qwen'], re: /\bqwen[- ]?[0-9]/i },
+  { name: 'mistral-version', families: ['mistral'], re: /\b(mistral (large|small|medium) [0-9]|mistral-[a-z]*-?[0-9]{4}|codestral[- ]?[0-9])/i },
   // Cohere ships four lines and only `command-r` was covered. `Command A` needs
   // care: "the agent can command a subprocess" is ordinary English, so match the
   // hyphenated slug in any case, but the spaced form only when capitalised as the
   // product name. A sentence literally starting "Command a ..." would trip; no
   // checklist phrases it that way, and the allow-marker is the escape hatch.
-  { name: 'cohere-command-r', re: /\bcommand[- ]r\+?/i },
-  { name: 'cohere-command-a', re: /\bcommand-a\b|\bCommand A\b/ },
-  { name: 'cohere-aya', re: /\baya\b/i },
-  { name: 'cohere-embed-rerank', re: /\b(embed|rerank)[- ]v[0-9]/i },
-  { name: 'moonshot-version', re: /\b(kimi|moonshot)[- ]?[a-z]?[0-9]/i },
-  { name: 'zhipu-version', re: /\b(glm|chatglm)[- ]?[0-9]/i },
-  { name: 'minimax-version', re: /\b(minimax|abab)[- ]?[a-z]?[0-9]/i },
+  { name: 'cohere-command-r', families: ['cohere'], re: /\bcommand[- ]r\+?/i },
+  { name: 'cohere-command-a', families: ['cohere'], re: /\bcommand-a\b|\bCommand A\b/ },
+  { name: 'cohere-aya', families: ['cohere'], re: /\baya\b/i },
+  { name: 'cohere-embed-rerank', families: ['cohere'], re: /\b(embed|rerank)[- ]v[0-9]/i },
+  { name: 'moonshot-version', families: ['moonshot'], re: /\b(kimi|moonshot)[- ]?[a-z]?[0-9]/i },
+  { name: 'zhipu-version', families: ['zhipu'], re: /\b(glm|chatglm)[- ]?[0-9]/i },
+  { name: 'minimax-version', families: ['minimax'], re: /\b(minimax|abab)[- ]?[a-z]?[0-9]/i },
   // MiniMax's media lines drop the family name entirely (`Hailuo-02`, `image-01`).
-  { name: 'minimax-hailuo', re: /\bhailuo\b/i },
-  { name: 'minimax-image', re: /\bimage-0[0-9]\b/i },
-  { name: 'granite-version', re: /\bgranite[- ]?[0-9]/i },
+  { name: 'minimax-hailuo', families: ['minimax'], re: /\bhailuo\b/i },
+  { name: 'minimax-image', families: ['minimax'], re: /\bimage-0[0-9]\b/i },
+  { name: 'granite-version', families: ['ibm-granite'], re: /\bgranite[- ]?[0-9]/i },
   // `jamba-large` / `jamba-mini` carry no version digit, and none of these three
   // family names has an ordinary English use, so match the bare name — the same
   // shape as the `command-r` pattern above.
   // No trailing \b: it blocked the HF org string `ai21labs`.
-  { name: 'jamba-version', re: /\b(jamba|ai21)/i },
-  { name: 'nemotron-version', re: /\bnemotron\b/i },
-  { name: 'olmo-version', re: /\bolmo\b/i },
+  { name: 'jamba-version', families: ['ai21'], re: /\b(jamba|ai21)/i },
+  { name: 'nemotron-version', families: ['nvidia-nemotron'], re: /\bnemotron\b/i },
+  { name: 'olmo-version', families: ['ai2-olmo'], re: /\bolmo\b/i },
   // --- regional ---
-  { name: 'sarvam-version', re: /\bsarvam[- ]?[a-z]?[0-9]/i },
-  { name: 'falcon-version', re: /\bfalcon[- ]?[a-z]?[0-9]/i },
+  { name: 'sarvam-version', families: ['sarvam'], re: /\bsarvam[- ]?[a-z]?[0-9]/i },
+  { name: 'falcon-version', families: ['falcon'], re: /\bfalcon[- ]?[a-z]?[0-9]/i },
   {
     name: 'regional-other-version',
+    families: ['regional-other'],
     re: /\b(jais|allam|sea-lion|hyperclova|hcx|solar|k2-think|k2-horizon)[- ]?[a-z]?[0-9]/i,
   },
   // --- perishable non-name facts ---
@@ -101,6 +102,23 @@ const MODEL_VERSION_PATTERNS = [
     re: /\b(19|20)\d{2}-\d{2}-\d{2}\b[^.\n]{0,40}\b(deprecat\w*|retir\w*|shut ?down|sunset\w*|end[- ]of[- ]life|EOL|knowledge cutoff|training cutoff)\b/i,
   },
 ];
+
+test('the model-fact guard covers every shipped profile family', () => {
+  const profileFamilies = fs.readdirSync(PROFILE_DIR)
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => path.basename(file, '.md'))
+    .sort();
+  const coveredFamilies = new Set(
+    MODEL_VERSION_PATTERNS.flatMap(({ families = [] }) => families),
+  );
+  const uncovered = profileFamilies.filter((family) => !coveredFamilies.has(family));
+
+  assert.deepEqual(
+    uncovered,
+    [],
+    `Every model profile needs at least one MODEL_VERSION_PATTERNS entry. Missing: ${uncovered.join(', ')}`,
+  );
+});
 
 test('checklists contain no un-annotated model-version strings', () => {
   const violations = [];
