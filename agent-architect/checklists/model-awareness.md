@@ -2,7 +2,7 @@
 
 ## Instructions
 
-Apply this checklist against agent systems where the target model(s) are known or detectable. Read `model-profiles.md` first to load the relevant model profile(s). Be specific — cite the model, the file:line, and the mismatch.
+Apply this checklist against agent systems where the target model(s) are known or detectable. Resolve each detected model to its family through the index at `model-profiles.md`, then read that family's `model-profiles/<family>.md` — the index is a router, not a data source. Load only the families Discovery detected. Be specific — cite the model, the file:line, and the mismatch.
 
 **This checklist requires model detection from Phase 0.** If no models were detected, skip this checklist and note: "N/A — no models detected in codebase."
 

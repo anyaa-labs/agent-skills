@@ -409,7 +409,7 @@ Apply evaluation checklists based on the system's architecture (from Discovery f
 1. Read `checklists/prompt-architecture.md` — apply against all system prompts and agent instructions
 2. Read `checklists/tool-design.md` — apply against all tool definitions and function schemas
 3. Read `checklists/production-readiness.md` — apply against error handling, cost controls, and observability
-4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. Cross-reference `model-profiles.md` for each detected model. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
+4. Read `checklists/model-awareness.md` — apply against detected models, prompt formats, and harness patterns. For each detected model, resolve its family through the index at `model-profiles.md`, then read that family's `model-profiles/<family>.md` — the index is a router, not a data source, and carries no capability, context-window, or tool-semantics facts. Load only the families Discovery detected. Apply the precedence rule: model-specific findings override conflicting generic findings from checklists 1-3.
 5. Read `checklists/security.md` — apply against all agent input/output channels, tool access scope, credential handling, and multi-agent trust boundaries
 6. Read `checklists/harness-architecture.md` — apply against runtime loop, SDK choice, sandbox/workspace, approvals, execution boundaries, state ownership, artifact flow, and recovery orchestration. For deeper background, read `references/harness-engineering.md` when a finding needs design justification.
 
@@ -683,7 +683,7 @@ Focused teardown of a specific prompt, skill file, or tool definition.
    - **Orchestration code** → apply multi-agent checklist
    - **Eval code** → apply eval-infrastructure checklist
    - **Voice / image / video / realtime / computer-use code** → apply multimodal-architecture + security + production-readiness checklists
-3. If a target model is detectable (from the file, its imports, or surrounding code), read `model-profiles.md` for the relevant profile. If the target model is not detectable, note: "Target model unknown — model-awareness findings have reduced confidence."
+3. If a target model is detectable (from the file, its imports, or surrounding code), resolve its family through the index at `model-profiles.md` and read that family's `model-profiles/<family>.md` — the index is a router, not a data source. If the target model is not detectable, note: "Target model unknown — model-awareness findings have reduced confidence."
 4. Count tokens, identify structural patterns, note what stands out
 
 ### REVIEW: Line-by-Line Teardown

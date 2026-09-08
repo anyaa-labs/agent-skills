@@ -24,7 +24,7 @@ Every profile includes:
 
 **Version matching:** Detect the specific version string (for example, `gpt-5.5`, `claude-opus-4-8`, `gemini-3-pro`, `deepseek-v3.2`). Match to the closest version in the family profile. If only the family is known, apply family-wide patterns and flag: "Applying [family] profile. Exact version behavior may differ."
 
-**API ID to family mapping:** Model strings in code often differ from marketing names. Match by prefix/substring:
+**API ID to family mapping:** Model strings in code often differ from marketing names. Match by prefix/substring, **evaluated top to bottom — first match wins**. The order is load-bearing: derived models carry their base model's name (`llama-3.3-nemotron-super-49b` is a Nvidia model wearing a Meta prefix), so the narrower vendor patterns are listed above the broader base-family ones. Do not reorder these lines alphabetically.
 
 - `gpt-5*`, `gpt-6*`, `gpt-realtime*`, `o*`, `gpt-*`, `openai/gpt-oss*` -> `model-profiles/openai.md`
 - `claude-opus-4-*`, `claude-sonnet-4-*`, `claude-haiku-4-*`, `claude-fable-*`, `claude-mythos-*`, `claude-*`, `anthropic.*` -> `model-profiles/anthropic.md`
@@ -33,11 +33,11 @@ Every profile includes:
 - `amazon.nova-*`, `us.amazon.nova-*`, `eu.amazon.nova-*`, `jp.amazon.nova-*`, `global.amazon.nova-*`, `nova-*` -> `model-profiles/amazon-nova.md`
 - `qwen3*`, `qwen-*`, `qwen_*` -> `model-profiles/qwen.md`
 - `deepseek-v4*`, `deepseek-v3*`, `deepseek-chat`, `deepseek-reasoner`, `deepseek-*` -> `model-profiles/deepseek.md`
+- `nemotron-*`, `*nemotron*` (including `llama-*nemotron*` — Nvidia derivatives keep the base model's name and must be matched before Meta's pattern below), `nvidia/*`, `nvcr.io/nim/nvidia/*` -> `model-profiles/nvidia-nemotron.md`
 - `llama-4*`, `llama-*`, `meta-llama/*` -> `model-profiles/meta.md`
 - `mistral-*`, `open-mistral-*`, `codestral-*` -> `model-profiles/mistral.md`
 - `command-r*`, `cohere.*` -> `model-profiles/cohere.md`
 - `jamba-*`, `ai21.jamba-*`, `ai21labs/*` -> `model-profiles/ai21.md`
-- `nemotron-*`, `nvidia/*nemotron*`, `nvcr.io/nim/nvidia/*` -> `model-profiles/nvidia-nemotron.md`
 - `olmo-*`, `allenai/olmo*`, `allenai/Olmo-*` -> `model-profiles/ai2-olmo.md`
 - `kimi-*`, `moonshot-*`, `moonshotai/*` -> `model-profiles/moonshot.md`
 - `glm-*`, `chatglm-*`, `zai-org/*` -> `model-profiles/zhipu.md`
