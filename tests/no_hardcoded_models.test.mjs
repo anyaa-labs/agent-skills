@@ -33,15 +33,27 @@ const MODEL_VERSION_PATTERNS = [
   { name: 'llama-version', re: /\bllama[- ]?[0-9]/i },
   { name: 'qwen-version', re: /\bqwen[- ]?[0-9]/i },
   { name: 'mistral-version', re: /\b(mistral (large|small|medium) [0-9]|mistral-[a-z]*-?[0-9]{4}|codestral[- ]?[0-9])/i },
-  { name: 'command-version', re: /\bcommand[- ]r\+?/i },
+  // Cohere ships four lines and only `command-r` was covered. `Command A` needs
+  // care: "the agent can command a subprocess" is ordinary English, so match the
+  // hyphenated slug in any case, but the spaced form only when capitalised as the
+  // product name. A sentence literally starting "Command a ..." would trip; no
+  // checklist phrases it that way, and the allow-marker is the escape hatch.
+  { name: 'cohere-command-r', re: /\bcommand[- ]r\+?/i },
+  { name: 'cohere-command-a', re: /\bcommand-a\b|\bCommand A\b/ },
+  { name: 'cohere-aya', re: /\baya\b/i },
+  { name: 'cohere-embed-rerank', re: /\b(embed|rerank)[- ]v[0-9]/i },
   { name: 'moonshot-version', re: /\b(kimi|moonshot)[- ]?[a-z]?[0-9]/i },
   { name: 'zhipu-version', re: /\b(glm|chatglm)[- ]?[0-9]/i },
   { name: 'minimax-version', re: /\b(minimax|abab)[- ]?[a-z]?[0-9]/i },
+  // MiniMax's media lines drop the family name entirely (`Hailuo-02`, `image-01`).
+  { name: 'minimax-hailuo', re: /\bhailuo\b/i },
+  { name: 'minimax-image', re: /\bimage-0[0-9]\b/i },
   { name: 'granite-version', re: /\bgranite[- ]?[0-9]/i },
   // `jamba-large` / `jamba-mini` carry no version digit, and none of these three
   // family names has an ordinary English use, so match the bare name — the same
   // shape as the `command-r` pattern above.
-  { name: 'jamba-version', re: /\b(jamba|ai21)\b/i },
+  // No trailing \b: it blocked the HF org string `ai21labs`.
+  { name: 'jamba-version', re: /\b(jamba|ai21)/i },
   { name: 'nemotron-version', re: /\bnemotron\b/i },
   { name: 'olmo-version', re: /\bolmo\b/i },
   // --- regional ---
@@ -58,8 +70,17 @@ const MODEL_VERSION_PATTERNS = [
   // thresholds ("prompt exceeds 8K tokens", "<2K token prompts") are generic
   // quality guidance and stay legal, so the number must sit next to
   // context/window vocabulary within one clause to trip the guard.
-  { name: 'context-window-claim', re: /\b(context|window)\b[^.\n]{0,15}\b\d{1,4}\s?K\b/i },
-  { name: 'context-window-claim-reversed', re: /\b\d{1,4}\s?K\b[^.\n]{0,15}\b(context window|context length|window)\b/i },
+  // The 15-char proximity window was too tight for ordinary phrasing: "the context
+  // window on this tier is 200K" puts 17 chars between the two, and slipped through.
+  // Widened to 30, which still keeps the number inside a single clause. Measured at
+  // zero false positives across all twelve checklists.
+  { name: 'context-window-claim', re: /\b(context|window)\b[^.\n]{0,30}\b\d{1,4}\s?K\b/i },
+  { name: 'context-window-claim-reversed', re: /\b\d{1,4}\s?K\b[^.\n]{0,30}\b(context window|context length|window)\b/i },
+  // Million-scale windows are now the common case and were entirely uncovered.
+  { name: 'context-window-claim-m', re: /\b(context|window)\b[^.\n]{0,30}\b\d{1,4}\s?M\b/i },
+  { name: 'context-window-claim-m-reversed', re: /\b\d{1,4}\s?M\b[^.\n]{0,30}\b(context window|context length|window)\b/i },
+  // Comma-grouped token counts ("1,000,000 tokens") sidestep every K/M pattern.
+  { name: 'context-window-claim-grouped', re: /\b\d{1,3}(?:,\d{3})+\s*tokens?\b/i },
   // A date attached to a verification, deprecation, or retirement claim is a fact
   // that expires. Illustrative dates inside memory/validity-window examples
   // ("on 2026-04-15 we cooked poha", `valid_until: 2026-05-05`) are generic, so
@@ -67,6 +88,13 @@ const MODEL_VERSION_PATTERNS = [
   {
     name: 'dated-model-fact',
     re: /\b(as of|verified|re-?verified|researched|last updated|current as of|announced|available since|released|deprecat\w*|retir\w*|shut ?down|sunset\w*|end[- ]of[- ]life|EOL)\b[^.\n]{0,40}\b(19|20)\d{2}-\d{2}-\d{2}\b/i,
+  },
+  // Perishable facts written in prose ("deprecated in September 2026") escaped the
+  // ISO-only patterns. Same perishability-verb requirement, so ordinary prose dates
+  // in illustrative examples stay legal.
+  {
+    name: 'dated-model-fact-prose',
+    re: /\b(as of|verified|re-?verified|researched|last updated|current as of|announced|available since|released|deprecat\w*|retir\w*|shut ?down|sunset\w*|end[- ]of[- ]life|EOL)\b[^.\n]{0,40}\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(19|20)\d{2}\b/i,
   },
   {
     name: 'dated-model-fact-reversed',
@@ -96,5 +124,59 @@ test('checklists contain no un-annotated model-version strings', () => {
     `Model-version facts belong in agent-architect/model-profiles/<family>.md, not in checklists.\n` +
       `If a mention is genuinely generic, append '<!-- model-ref-ok: reason -->' to the line.\n\n` +
       violations.join('\n'),
+  );
+});
+
+// The 0.8.0 guard had no test of its own behaviour, so nobody noticed that most
+// families' real ID shapes slipped straight through it. These two corpora pin the
+// guard down from both sides: MUST_TRIP is every probe that escaped 0.8.0, and
+// MUST_NOT_TRIP is the generic checklist prose the guard has to leave alone.
+// Widening a pattern is fine; silently narrowing one now fails a test.
+const MUST_TRIP = [
+  'Command A is Cohere\'s current flagship for RAG workloads.',
+  'Use Aya Expanse for multilingual routing.',
+  'Prefer embed-v4 over the older embedding endpoint.',
+  'rerank-v3.5 should sit behind the retrieval step.',
+  'Hailuo-02 handles the video generation path.',
+  'MiniMax image-01 is the cheaper option here.',
+  'Weights are published under the ai21labs org on HuggingFace.',
+  'The model has a 1M context window, so chunking is optional.',
+  'Its context window is 2 M tokens on the newest tier.',
+  'The window comfortably holds 1,000,000 tokens of transcript.',
+  'The context window on this tier is 200K tokens.',
+  'This endpoint was deprecated in September 2026 with no replacement.',
+  'Route long jobs to llama-3.3-nemotron-super-49b instead.',
+];
+
+const MUST_NOT_TRIP = [
+  'The agent can command a subprocess to exit cleanly.',
+  'Flag any prompt that exceeds 8K tokens as instruction dilution.',
+  'Keep system prompts under 2K tokens where possible.',
+  'On 2026-04-15 the user said they cooked poha for breakfast.',
+  'Set valid_until: 2026-05-05 on every volatile memory row.',
+  'Embed the retrieved chunk verbatim rather than paraphrasing it.',
+  'The image-only branch must still validate provenance.',
+  'Summarise the trace before the window fills.',
+];
+
+const matchers = (line) =>
+  MODEL_VERSION_PATTERNS.filter(({ re }) => re.test(line)).map(({ name }) => name);
+
+test('the guard actually catches the model-fact shapes it claims to', () => {
+  const missed = MUST_TRIP.filter((line) => matchers(line).length === 0);
+  assert.deepEqual(
+    missed,
+    [],
+    `These carry a model-version fact but no pattern matches them:\n${missed.join('\n')}`,
+  );
+});
+
+test('the guard leaves generic checklist prose alone', () => {
+  const falsePositives = MUST_NOT_TRIP.filter((line) => matchers(line).length > 0)
+    .map((line) => `[${matchers(line).join(', ')}] ${line}`);
+  assert.deepEqual(
+    falsePositives,
+    [],
+    `These are generic guidance and must stay legal:\n${falsePositives.join('\n')}`,
   );
 });
