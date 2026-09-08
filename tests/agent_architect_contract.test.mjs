@@ -10,8 +10,8 @@ test('package and skill versions match the planned release', () => {
   const pkg = JSON.parse(read('package.json'));
   const skill = read('agent-architect/SKILL.md');
 
-  assert.equal(pkg.version, '0.8.0');
-  assert.match(skill, /^version: 0\.8\.0$/m);
+  assert.equal(pkg.version, '0.8.1');
+  assert.match(skill, /^version: 0\.8\.1$/m);
 });
 
 test('SKILL advertises and reports the same 12 audit dimensions', () => {
