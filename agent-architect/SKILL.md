@@ -312,7 +312,7 @@ Do not ask the user to select a mode. The auto-select rules cover all cases.
 
 | Mode   | When to use                                              | What you get                                    |
 |--------|----------------------------------------------------------|-------------------------------------------------|
-| AUDIT  | Existing agent system, want a full evaluation            | 12-dimension scored report, prioritized fixes    |
+| AUDIT  | Existing agent system, want a full evaluation            | 13-dimension scored report, prioritized fixes    |
 | REVIEW | Specific prompt or skill file to evaluate                | Focused teardown with line-by-line findings      |
 | DESIGN | Architecture questions — new system, evolving existing, or focused design topic | Design conversation with concrete recommendations |
 
