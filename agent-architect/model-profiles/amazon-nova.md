@@ -20,7 +20,7 @@ researched_date: 2026-09-08
 - Nova 2 Lite has extended thinking, **off by default**, enabled through `additionalModelRequestFields`: `"reasoningConfig": {"type": "enabled", "maxReasoningEffort": "low"}`. `type` is `"enabled"`/`"disabled"`; `maxReasoningEffort` is `"low"`/`"medium"`/`"high"`.
 - AWS's own agent guidance: "Medium effort is optimal for agentic workflows that coordinate multiple tools and require the model to maintain context across several sequential operations."
 - **Reasoning content comes back as `[REDACTED]`.** AWS: "With Amazon Nova 2, reasoning content displays as `[REDACTED]`. You're still charged for reasoning tokens... We include this field in the response structure now to preserve the option of exposing reasoning content in the future." **Reasoning tokens roll into `outputTokens` with no separate counter** — a reasoning-cost line item cannot be broken out from output cost.
-- **`temperature`, `topP` and `topK` cannot be used with `maxReasoningEffort: "high"`; combining them causes an error.**
+- **Sampling and length parameters must be unset with `maxReasoningEffort: "high"` — and AWS states the rule twice, with two different lists.** The *Quick start* note reads: "Temperature, topP and topK cannot be used with `maxReasoningEffort` set to `high`. Using these parameters together causes an error." The *Configuration options* note reads: "when using `"high"`, temp, topP, and maxToken must be unset." `topK` appears only in the first list; **`maxTokens` only in the second**. Audit against the **union** — `temperature`, `topP`, `topK` *and* `maxTokens` all unset — because the page offers no basis for preferring one note over the other, and the second is corroborated by the output-length sentence that immediately follows it.
 - At high effort, output "may generate output that exceeds 65k tokens... for some problems we have see it go up to 128K tokens" — budget for it.
 - Extended thinking is available on **`us.amazon.nova-2-lite-v1:0` only**. Do not assume it on other Nova IDs.
 - **Gap:** whether `reasoningContent` blocks must be replayed across turns is **not publicly documented as of 2026-09-08**. AWS's tool-use example appends the whole assistant message (carrying the block along) but states no rule. The safe default is to replay it, since that is what AWS's own sample does.
@@ -72,7 +72,7 @@ researched_date: 2026-09-08
 
 - **An abstraction layer that assumes OpenAI-shaped access to every Bedrock model.** Nova supports neither Responses nor Chat Completions nor the mantle endpoint; a "just change the model ID" swap silently has no valid code path.
 - **Extended thinking assumed on rather than enabled.** It is off by default and available only on `us.amazon.nova-2-lite-v1:0`; a harness expecting reasoning gets none, with no error.
-- **Sampling parameters set alongside `maxReasoningEffort: "high"`**, which errors.
+- **Sampling or length parameters set alongside `maxReasoningEffort: "high"`**, which errors. `maxTokens` is the one most harnesses trip on: nearly every client sets it unconditionally, and it appears in only one of AWS's two conflicting notes — so a harness built from the other note reads as correct and still fails at runtime.
 - **A reasoning-cost line item that cannot be produced**, because reasoning tokens are folded into `outputTokens` — and a reasoning-trace inspection feature that cannot work, because content is `[REDACTED]`.
 - **Long-context cost modelled on full-prefix caching.** The 20K cache cap and 5-minute TTL mean a long agent loop re-pays for its context almost every turn.
 - **A context-budget guard built on token counting** on Nova 2 Lite, which does not support "Count tokens."
@@ -86,7 +86,7 @@ researched_date: 2026-09-08
 
 - Write a **Bedrock-native adapter** for Nova (Converse for text/vision, `InvokeModelWithBidirectionalStream` for Sonic); do not route it through an OpenAI-compatible client layer.
 - Enable extended thinking explicitly via `additionalModelRequestFields`, and confirm the model ID actually supports it.
-- Never set `temperature`/`topP`/`topK` together with `maxReasoningEffort: "high"`.
+- Never set `temperature`/`topP`/`topK`/`maxTokens` together with `maxReasoningEffort: "high"` — the union of AWS's two inconsistent notes. Dropping `maxTokens` is independently necessary: high effort "may generate output that exceeds 65k tokens... up to 128K tokens", so any cap the harness was relying on would truncate the answer.
 - Replay the full assistant message (including any `reasoningContent` block) on tool-result round-trips — AWS's own example does, and the rule is undocumented.
 - Return tool results as **user-role `toolResult` blocks** with the matching `toolUseId` and an explicit `status`.
 - Keep tool schemas to **two levels of nesting**, with long string arguments last.
@@ -123,7 +123,7 @@ Note also that Nova Pro / Lite / Micro carry EOL fields reading "No sooner than 
 ### Re-evaluate when
 
 - Any Nova model in use enters Legacy, or an EOL date approaches — AWS names no replacement, so the migration is a design decision that needs lead time.
-- Adopting extended thinking, or changing `maxReasoningEffort` (especially to `high`, which forbids sampling parameters).
+- Adopting extended thinking, or changing `maxReasoningEffort` (especially to `high`, which forbids sampling *and* length parameters — and which AWS documents inconsistently, so re-read both notes on the page).
 - Adding `nova_code_interpreter` or `nova_grounding`, or standing up an MCP client bridge.
 - Taking on a residency obligation, or changing regions — Nova's per-model geo/global/in-region posture varies sharply between models.
 - Changing the Bedrock data-retention mode, or needing to assert one for Nova traffic specifically.
