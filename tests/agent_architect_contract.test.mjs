@@ -14,6 +14,17 @@ test('package and skill versions match the planned release', () => {
   assert.match(skill, /^version: 0\.9\.0$/m);
 });
 
+test('every "N-dimension" claim in SKILL agrees with the dimension count', () => {
+  const skill = read('agent-architect/SKILL.md');
+  // The frontmatter phrase was already asserted, but the mode table carried its own
+  // "12-dimension" copy that no test looked at — so it sat one dimension stale while
+  // `npm test` stayed green. Any count written anywhere in the file must agree.
+  const claims = [...skill.matchAll(/(\d+)-dimension/g)].map((m) => Number(m[1]));
+  assert.ok(claims.length > 0, 'expected at least one "N-dimension" claim in SKILL.md');
+  const wrong = claims.filter((n) => n !== 13);
+  assert.deepEqual(wrong, [], `these "N-dimension" claims disagree with the 13 dimensions: ${wrong}`);
+});
+
 test('SKILL advertises and reports the same 13 audit dimensions', () => {
   const skill = read('agent-architect/SKILL.md');
   const dimensions = [
