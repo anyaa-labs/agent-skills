@@ -131,6 +131,15 @@ test('the index lists exactly the family files that exist', () => {
   }
 });
 
+test('the OpenAI o-series route cannot swallow other O-prefixed families', () => {
+  const index = fs.readFileSync(INDEX_PATH, 'utf8');
+  const openaiRoute = index.split('\n').find((line) => line.includes('`model-profiles/openai.md`'));
+
+  assert.ok(openaiRoute, 'model-profiles.md must include an OpenAI route');
+  assert.match(openaiRoute, /`o\[1-9\]\*`/, 'OpenAI o-series route must start with a digit');
+  assert.doesNotMatch(openaiRoute, /`o\*`/, 'bare `o*` would route OLMo and other unrelated families to OpenAI');
+});
+
 // The index is the first model file the skill reads (SKILL.md Discovery 2.5), and
 // the Staleness Protocol lower in that same file tells the reader to do date
 // arithmetic against what they find there. A banner date older than the family
