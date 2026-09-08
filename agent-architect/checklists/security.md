@@ -87,6 +87,8 @@ Agent receives tools or credentials that exceed what its stated task requires. L
 
 **What to look for:** Agents whose tool set includes irreversible actions (delete, send, post, execute) when the task is read-only or analytical. Agents receiving production service credentials when a read-only or scoped token would suffice. No credential rotation or expiry on task completion. Shared credentials used across multiple agents with different privilege requirements.
 
+*(Cross-reference: this finding owns the **tool list** — surface that exceeds the task. `agent-identity.md` owns the **credential and the decision point**: whether the authority behind those tools was scoped per delegation and whether anything outside the model can refuse its use. Report the excessive-surface half here and the credential-scope half there; do not report one defect under both.)*
+
 ### 2.3 No Defense Against Memory or RAG Poisoning
 
 Agent uses persistent memory (vector stores, episodic memory, conversation history) or RAG retrieval without validation of stored or retrieved content. A single malicious document written to the store persists across sessions and continuously corrupts future agent behavior. Unlike a one-time injection, poisoned memory compounds over time.
@@ -107,6 +109,8 @@ LLM output is consumed by downstream APIs, databases, shell commands, or HTML re
 
 ### 2.6 No Runtime Action Interception
 High-risk tool calls are not intercepted before execution for allow/warn/block/review decisions based on command, destination, data flow, and blast radius.
+
+*(Cross-reference: this interception evaluates **action shape** — is this command dangerous given its destination and blast radius. `agent-identity.md` 1.1 evaluates a proposed action **against the delegation** — is this agent authorized for this, given what it was actually delegated. Where one broker does both jobs, report it once, under `agent-identity.md` 1.1, since the delegation-scoping half is the harder one to satisfy.)*
 
 ### 2.7 Visual or Audio Prompt Injection Surface Untested
 The system accepts images, screenshots, video, audio, or transcripts but has no adversarial modality test cases or containment pattern.
