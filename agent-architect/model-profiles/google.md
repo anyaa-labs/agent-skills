@@ -9,6 +9,7 @@ researched_date: 2026-09-08
 
 ### API surface
 
+- **The Interactions API went GA on 2026-06-22 and is now the primary, documentation-default interface for Gemini models and agents, superseding `generateContent`.** `generateContent` remains supported but is now legacy, and Google states that new long-running agent capabilities will increasingly ship on Interactions only. Interactions also carries Flex/Priority service tiers and the Managed Agents surface. A system still targeting `generateContent` is not broken — but it is on the legacy surface, and the gap widens with each release.
 - Use `generateContent` for stable existing integrations.
 - **Google states that "all new models, multimodal capabilities, tools, and agentic features will launch on the Interactions API."** It differs from `generateContent` by managing conversation state server-side, exposing observable typed execution steps (`function_call`, `function_result`, `model_output`, `thought`, `user_input`), and supporting background execution (`background=true`). `previous_interaction_id` links turns for server-side history retrieval; `store` defaults to `true`. `tools`, `system_instruction`, and `generation_config` are interaction-scoped and must be re-specified when running stateless.
 - Google's enterprise agent surface appears to have been renamed from "Vertex AI" to **"Gemini Enterprise Agent Platform"** (Anthropic's own docs independently refer to "Google Cloud's Agent Platform" for the same surface). A managed-agent product, `antigravity-preview-05-2026`, is documented as running code, managing files, and browsing the web — Google's equivalent of a hosted agent runtime, currently in preview.
@@ -74,6 +75,7 @@ researched_date: 2026-09-08
 - Live tool calls lack timing and timeout policy.
 - A harness pairs the newest Flash model with an assumed realtime/Live capability that only the separate Live model line actually supports.
 - An embodied (Robotics ER) deployment relies on retry-after-failure logic borrowed from a text/tool-call harness, where a failed action already changed physical state.
+- A system stays on `generateContent` on the assumption it is still the default surface — it has been the legacy one since the Interactions API went GA on 2026-06-22.
 - A residency requirement is treated as satisfied because Gemini is "available" in a region, when the Gemini API terms make no processing-location commitment at all.
 
 ### Harness requirements
@@ -121,6 +123,7 @@ Folded into this profile as an open-weight subsection rather than a separate fam
 - [Gemini API changelog](https://ai.google.dev/gemini-api/docs/changelog)
 - [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling)
 - [Interactions API overview](https://ai.google.dev/gemini-api/docs/interactions/interactions-overview)
+- [Interactions API GA announcement](https://blog.google/innovation-and-ai/technology/developers-tools/interactions-api-general-availability/)
 - [Live API](https://ai.google.dev/gemini-api/docs/live-api)
 - [Available regions](https://ai.google.dev/gemini-api/docs/available-regions)
 - [Gemini API additional terms of service](https://ai.google.dev/gemini-api/terms)
