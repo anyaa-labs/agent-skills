@@ -20,6 +20,8 @@ researched_date: 2026-09-08
 | Parasail | `https://api.parasail.io/v1` | `Olmo-3-32B-Think` |
 
 - **Self-hosting is the first-class path**: `vllm serve "allenai/Olmo-3.1-32B-Instruct"` yields an OpenAI-compatible `/v1/chat/completions`.
+<!-- Sourcing: this table comes from the docs.allenai.org SPA and is not reproducible by plain fetch. See "Refresh warning" in the sourcing-gap section before changing it. -->
+
 - **Audit consequence: an OLMo model string in code tells you nothing about who is serving it, in which jurisdiction, or under whose retention policy.** Every OLMo finding in a Sovereignty & Residency or Agent Security review must trace the serving provider separately — the model name is not the boundary.
 
 ### Reasoning state
@@ -135,4 +137,15 @@ vllm serve allenai/Olmo-3-7B-Instruct --enable-auto-tool-choice --tool-call-pars
 - **Parallel tool calls, tool-ID semantics, and prompt caching are not publicly documented as of 2026-09-08.**
 - **No deprecation policy exists**, and the release-notes page itself stops at May 2025 with no Olmo 3 entries.
 - **Retention and residency for the three third-party serving providers are not documented by Ai2** — trace them at the provider.
-- **Refresh warning for the next research pass:** the live docs host is **`docs.allenai.org`** (`allenai.org/documentation` 302-redirects there), **not** `docs.allen.ai` — and `docs.allenai.org` is a **client-rendered SPA**. A plain fetch of any subpage, including `.md` variants and `llms-full.txt`, returns the site's intro shell rather than the page. Five of the sources above required a real browser. A fetch-only re-verification will wrongly conclude Ai2 documents nothing.
+- **Refresh warning for the next research pass — read this before re-verifying anything above.** The live docs host is **`docs.allenai.org`** (`allenai.org/documentation` 302-redirects there), **not** `docs.allen.ai` — and `docs.allenai.org` is a **client-rendered SPA**. A plain fetch of any subpage, including `.md` variants and `llms-full.txt`, returns the site's intro shell rather than the page content. Five of the sources above required a real browser to read.
+
+  This matters more here than for any other family in this set, because OLMo's *most operational* claims are the SPA-dependent ones. Specifically, these rest on pages a plain fetch cannot read:
+
+  - the three-provider table in `### API surface` — base URLs and the three different model strings for the same weights
+  - the `vllm serve` self-hosting path
+  - the first-party **Vertex AI** and **Modal** deployment guides in `### Deployment & residency`
+  - the "permissive commercial licensing: unrestricted commercial use" wording
+
+  What *is* reproducible by plain fetch: everything sourced to HuggingFace — the Apache 2.0 licence on both model cards, and `config.json`.
+
+  **The failure mode to avoid:** a fetch-only re-verification pass reads the intro shell, finds none of the above, and concludes Ai2 documents nothing — silently converting four sourced operational facts into "not publicly documented" and moving them into the gap list below. That would be a regression dressed as diligence. If your tooling cannot render JavaScript, do not downgrade these claims; leave them and record that you could not re-verify them.

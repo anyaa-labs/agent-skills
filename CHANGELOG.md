@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.1] — 2026-09-08
+
+Follow-ups parked during the 0.8.0 review, plus one field the review only
+identified as wrong rather than fixed.
+
+### Changed
+- **`tier` split into `access` and `scope`.** The single field mixed three unrelated axes — `frontier` was market positioning, `open-weight` was licensing, `regional` was geography — so a family that was two of them at once had to be filed as one, and the discarded half was repeatedly the fact an audit needed. Falcon is open-weight *and* regional; Nova is API-only *and* frontier. Now `access: api-only | open-weight` (can this be self-hosted?) and `scope: global | regional` (is it selected for residency, language coverage or sovereignty reasons?). Values were derived per family from each profile's own `Deployment & residency` text rather than translated from the old word. Capability positioning is deliberately **not** migrated: "frontier" is the fastest-rotting claim this layer could carry, and the layer exists to stop shipping facts that expire.
+- The split pays off in `sovereignty-residency.md` 1.1: which remediations exist now depends on `access`. On an open-weight family, self-hosting inside the boundary is a real option and the finding names it; on an api-only family with no published in-region path, the obligation cannot be met by configuration at all, and the honest finding is that the model choice is incompatible with the requirement — a model-selection decision, not a deployment bug.
+- `model-awareness.md` 2.1 and 3.1 no longer fall back to the family-level field as a cost proxy. That fallback was never sound — families span the full cost range internally, so a family label says nothing about the deployed model. The checklists now report the gap instead of estimating.
+- **AUDIT, REVIEW and the model-awareness header stopped naming the index as a data source.** The 0.8.0 final review fixed this for DESIGN mode only. Since the split, the index holds the family table, API-ID mapping, cost tiers and the staleness protocol — and no capability, context-window or tool-semantics facts — so an auditor following those three lines would open it, find nothing to reason with, and fall back on recollection: the exact failure the split was built to prevent.
+- The API-ID mapping is order-sensitive and now says so. Nvidia's derivatives keep their base model's name, so `llama-3.3-nemotron-super-49b` matched Meta's broader pattern first and routed to the wrong family. Nemotron now precedes Meta and matches the derived shape explicitly.
+
+### Fixed
+- **The model-fact grep guard had no test of its own behaviour**, so nobody noticed that most families' real ID shapes walked straight through it — twelve of fifteen probes taken during the 0.8.0 final review slipped. Widened to cover Cohere's `Command A` / `Aya` / `embed-v*` / `rerank-v*` (only `command-r` was covered), MiniMax's prefix-less `Hailuo-02` and `image-01`, the AI21 HF org string `ai21labs` (a trailing word boundary was blocking it), million-scale and comma-grouped context claims, and perishable dates written in prose rather than ISO form. Each widening was measured at zero false positives across all twelve checklists.
+- The durable half is a two-sided corpus — `MUST_TRIP` and `MUST_NOT_TRIP` — so the guard cannot be silently narrowed again. Verified by mutation: restoring either the `ai21` boundary or the old proximity window turns the suite red. The corpus immediately caught a wrong justification in its own commit.
+- **`amazon-nova.md` now records that AWS states the high-effort parameter constraint twice, with two different lists.** One note says temperature/topP/topK; another on the same page says temp/topP/**maxToken**. `topK` appears only in the first, `maxTokens` only in the second. Recorded as the union, because the page gives no basis for preferring either and the `maxTokens` half is corroborated by the output-length sentence beside it. This is the one most harnesses will trip on — nearly every client sets `maxTokens` unconditionally — so a harness written from the first note reads as correct and still errors at runtime.
+- `google.md` pointed a successor model at a "Current models" section this file has never had, a clause carried through from the 0.7.x structure.
+- `ai2-olmo.md`'s refresh warning now names *which* claims depend on the `docs.allenai.org` SPA — the provider table, the `vllm serve` path, the Vertex/Modal guides, and the licensing wording — and states the failure mode explicitly: a fetch-only pass reads the intro shell, finds none of them, and silently converts four sourced operational facts into "not publicly documented".
+
+Suite 16 → 18.
+
 ## [0.8.0] — 2026-09-08
 
 ### Added
