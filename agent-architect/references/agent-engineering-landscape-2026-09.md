@@ -32,15 +32,33 @@ on them.
 
 ## When two sweeps disagree
 
-The five sweeps ran independently and were concatenated, so they can disagree — and one
-did. **The sweep holding the earlier primary source wins on questions of attribution and
-precedence**, because the later sweep's author had no way to see it. The one known
-instance is the "loop engineering" coinage, reconciled inline in the Anthropic sweep's
-theme 2 and governed by the practitioner sweep's terms-of-art entry.
+The five sweeps ran independently and were concatenated, so they can disagree. **The
+sweep holding the earlier primary source wins on questions of attribution and
+precedence**, because the later sweep's author had no way to see it. This is not a single
+known instance — the same "loop engineering" attribution question surfaces in more than
+one place, and each has been annotated in place rather than silently corrected:
 
-If you find another conflict, resolve it the same way and **annotate both sides** rather
-than deleting one. A source of truth that silently contradicts itself is worse than one
-that shows its working.
+- The Anthropic sweep's theme 2 (line 66) is the primary reconciliation: it originally
+  read "coined/popularized via Anthropic's own blog post title" and now asserts no coiner,
+  governed by the practitioner sweep's terms-of-art entry.
+- The OpenAI sweep's "Could not source" section (line 290) independently repeats an
+  "Anthropic's 'loop engineering'" ownership framing while describing what OpenAI has
+  *not* coined — a third, unannotated instance of the same assertion, now annotated there.
+- The Anthropic sweep's own theme 2 (line 66) still asserted Boris Cherny's role as plain
+  fact in its "Community amplification" sentence, even though this file's own "Could not
+  source" section (practitioner sweep) records that role as asserted only by aggregators
+  and Osmani's secondhand mention — the two are now cross-annotated so they agree.
+- The research-literature sweep's terms-of-art entry (line 789) names no coiner, so it is
+  not itself a conflict, but it is now cross-linked to the governing reconciliation above
+  so a reader landing there first is routed correctly.
+
+If you find another conflict over attribution or precedence, resolve it the same way:
+earlier-primary-source wins, and **annotate both sides** rather than deleting one. That
+tie-break is meaningless for a numeric or measurement disagreement between sweeps (e.g.
+two different figures for the same quantity under different scope conditions) — there is
+no "earlier primary source" that makes one figure simply wrong. For that case, record both
+figures side by side with their scope conditions instead of picking one. A source of truth
+that silently contradicts itself is worse than one that shows its working.
 
 ---
 
@@ -63,7 +81,7 @@ that shows its working.
 
 ### 2. Loop engineering — the new vocabulary for agent automation depth
 - **What changed:** Anthropic's Claude Code team published a taxonomy of four loop types: turn-based (manual, one prompt = one loop), goal-based (`/goal`, an evaluator model checks a stated completion condition and continues until met or a turn cap), time-based (`/loop`, `/schedule`, recurring on an interval), and proactive (event/schedule-triggered, no human in the loop). The `/goal` command shipped as a Claude Code feature (see Week 20 changelog, "Week 20" May 11–15 2026) and was retroactively framed as "loop engineering" in the June 30, 2026 post.
-- **Term of art:** **"Loop engineering"** — Anthropic published "Loop engineering: Getting started with loops" (Delba de Oliveira, Michael Segner) and it is the primary source for the four-rung taxonomy. **It is NOT the origin of the term, and this sweep asserts no coiner.** *(Reconciled across sweeps: this entry originally read "coined/popularized via Anthropic's own blog post title." The practitioner sweep found an earlier primary long-form use — Addy Osmani, 2026-06-07, three weeks before the Anthropic post — which itself claims no coinage, and could not verify the widely-credited origin post. See the practitioner sweep's "Loop engineering" terms-of-art entry, which governs on attribution. **Do not credit a coiner.**)* Community amplification: Boris Cherny (Claude Code creator) said he no longer prompts Claude directly, only "writes loops" (reported by The New Stack and Pragmatic Engineer, not primary-sourced beyond the claude.com post itself for the rung taxonomy).
+- **Term of art:** **"Loop engineering"** — Anthropic published "Loop engineering: Getting started with loops" (Delba de Oliveira, Michael Segner) and it is the primary source for the four-rung taxonomy. **It is NOT the origin of the term, and this sweep asserts no coiner.** *(Reconciled across sweeps: this entry originally read "coined/popularized via Anthropic's own blog post title." The practitioner sweep found an earlier primary long-form use — Addy Osmani, 2026-06-07, three weeks before the Anthropic post — which itself claims no coinage, and could not verify the widely-credited origin post. See the practitioner sweep's "Loop engineering" terms-of-art entry, which governs on attribution. **Do not credit a coiner.**)* Community amplification: Boris Cherny (Claude Code creator) is reported to have said he no longer prompts Claude directly, only "writes loops" (reported by The New Stack and Pragmatic Engineer, not primary-sourced beyond the claude.com post itself for the rung taxonomy). *(Flagged: this file's "Could not source" section records that Cherny's role in this practice is asserted only by aggregators and by Osmani's secondhand mention — no primary source for it was found in this sweep either. Treat as reported, not verified, consistent with that entry.)*
 - **Audit implication:** For a target system with recurring/autonomous agent invocation, identify which rung it occupies (manual turn / goal-checked / scheduled / event-proactive) and check whether the stop condition is: (a) explicit and machine-checkable (goal-based — verify an evaluator model or test suite grades completion, not the same model self-grading), (b) turn-capped, and (c) whether time-based/proactive loops have a kill-switch and cost ceiling, since they run unattended.
 - **Maps to:** NEW pattern candidate — sits next to The Recovery Ladder and Cost as Architecture; also relevant to The Evaluation Asymmetry (goal-based loops delegate "good enough" judgment to a separate evaluator specifically to avoid self-assessment bias).
 - **Sources:**
@@ -287,7 +305,7 @@ that shows its working.
   - https://openai.com/index/expanding-daybreak-as-the-cyber-defense-window-narrows/ — 2026-08-10
 
 ## Could not source
-- Whether OpenAI has coined a single umbrella term analogous to Anthropic's "loop engineering" (covering turn/goal/time/proactive loop taxonomy). Searched directly; found only individually named techniques (Programmatic Tool Calling, persisted/retained reasoning, native compaction, multi-agent, async tool calling, mid-turn steering) presented in the 2026-08-13 builder's guide as "three complementary architectural interventions" — but no single vendor-coined umbrella name for the category. Recording this as a negative finding rather than guessing at a term.
+- Whether OpenAI has coined a single umbrella term analogous to "loop engineering" (covering turn/goal/time/proactive loop taxonomy) — referring here to Anthropic's own published taxonomy post, not a coinage claim; see the cross-sweep reconciliation at the top of this file and the Anthropic sweep's theme 2, where no coiner is asserted for the term. Searched directly; found only individually named techniques (Programmatic Tool Calling, persisted/retained reasoning, native compaction, multi-agent, async tool calling, mid-turn steering) presented in the 2026-08-13 builder's guide as "three complementary architectural interventions" — but no single vendor-coined umbrella name for the category. Recording this as a negative finding rather than guessing at a term.
 - Exact publication date and full content of `openai.com/index/the-next-evolution-of-the-agents-sdk/` (April 2026 Agents SDK evolution piece referenced by secondary sources as introducing a "model-native harness" and native sandbox execution) — WebFetch returned HTTP 403 on this URL and it falls before the research window regardless, so not pursued further via the browser tool.
 - `openai.com/index/devday-2026/` — HTTP 403 on WebFetch; DevDay 2026 itself is scheduled for 2026-09-29, which is after this window's end (2026-09-08), so pre-event announcement pages were not chased further.
 - Whether "Multi-agent lets GPT‑5.6 spawn concurrent subagents" content on the OpenAI Developers X/Twitter account is dated exactly 2026-07-09 or later — inferred from changelog cross-reference and treated as reliable, but the social post itself carries no independently visible timestamp in the fetched content.
@@ -786,7 +804,7 @@ Sourcing note: every claim below was read on the primary page via WebFetch. Page
 
 ## Terms of art
 
-- **"Loop engineering"** — Coined/popularized starting ~June 2026 per this paper's own account; defined as designing systems that *start and stop agent runs for the developer* (scheduled or triggered by repo events, halted on a machine-checkable stop condition), one abstraction level above "prompting" and "context engineering." The paper's gray-literature review converges on a well-engineered loop containing: triggered runs with machine-checkable stop conditions, persistent state files, verifier sub-agents, token budgets, and defined escalation points to humans. An exploratory mining study of 36,710 open-source repos found agent-loop patterns matched in 256 and confirmed operating in 217 of those — but almost none of the repos committed the prescribed persistent state files, so the loop's actual runtime state stays outside version control in practice. **Audit-relevant distinction: the loop's configuration is typically auditable in-repo; its runtime state usually is not** — that gap is itself worth checking for in any system claiming to do loop engineering. Source: arXiv:2608.21884, https://arxiv.org/abs/2608.21884, submitted 2026-08-22 (v2, exploratory/gray-literature review — flagged as early-stage, self-described as deriving "a research agenda," not a mature empirical result).
+- **"Loop engineering"** — Coined/popularized starting ~June 2026 per this paper's own account, which names no coiner and so is not itself in conflict with the rest of this file; it is one data point on *when* the term entered usage, not a claim about *who* originated it. (See the cross-sweep reconciliation at the top of this file and the Anthropic sweep's theme 2 for the governing "no coiner asserted" ruling — a reader landing here first should go there for the attribution question.) Defined as designing systems that *start and stop agent runs for the developer* (scheduled or triggered by repo events, halted on a machine-checkable stop condition), one abstraction level above "prompting" and "context engineering." The paper's gray-literature review converges on a well-engineered loop containing: triggered runs with machine-checkable stop conditions, persistent state files, verifier sub-agents, token budgets, and defined escalation points to humans. An exploratory mining study of 36,710 open-source repos found agent-loop patterns matched in 256 and confirmed operating in 217 of those — but almost none of the repos committed the prescribed persistent state files, so the loop's actual runtime state stays outside version control in practice. **Audit-relevant distinction: the loop's configuration is typically auditable in-repo; its runtime state usually is not** — that gap is itself worth checking for in any system claiming to do loop engineering. Source: arXiv:2608.21884, https://arxiv.org/abs/2608.21884, submitted 2026-08-22 (v2, exploratory/gray-literature review — flagged as early-stage, self-described as deriving "a research agenda," not a mature empirical result).
 
 - **"Protocol validity" and the "Mislead gap"** — Protocol validity: the property that a benchmark's evaluation protocol keeps the intended capability *necessary* for a high score (i.e., the score can't be achieved via an exposure/shortcut unrelated to the claimed capability). Mislead gap: exploit score minus intended score, a quantified measure of benchmark score inflation from protocol-validity violations. Source: arXiv:2607.22368, https://arxiv.org/abs/2607.22368, submitted 2026-07-24.
 
