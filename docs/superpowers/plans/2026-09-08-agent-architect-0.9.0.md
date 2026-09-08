@@ -30,7 +30,7 @@ Write the assertions for the finished state first. All of these must FAIL after 
 
 - [ ] **Step 1:** Change the version pin to `0.9.0` in both places (`pkg.version` and the `SKILL.md` regex). Note there are THREE version sites in the repo — `package.json`, `agent-architect/SKILL.md` frontmatter, and this test. Task 11 updates the other two. 0.8.1 shipped red by moving only one.
 - [ ] **Step 2:** Add `'Agent Identity & Authorization'` to the dimensions array and change the count assertion from 12 to 13. Read the existing test to match its exact style.
-- [ ] **Step 3:** Update the cognitive-pattern count assertion. The current count is 29. Set it to 29 + (number of patterns Task 5 will add). Task 5 must land exactly that many; if it lands a different number, that is a spec conflict to escalate, not a number to quietly edit.
+- [ ] **Step 3:** Update the cognitive-pattern count assertion from 29 to **38**. Spec Part 3 lists exactly 9 new patterns, so Task 5 must land exactly 9. If Task 5 concludes a different number is right, that is a spec conflict to escalate — not a number to quietly edit here or there.
 - [ ] **Step 4:** Add `agent-architect/checklists/agent-identity.md` to the checklist-link existence test.
 - [ ] **Step 5:** Run `npm test`. Expected: several failures, all in this file. Record the exact failure list in your report — later tasks are verified against it.
 - [ ] **Step 6:** Commit.
@@ -92,7 +92,7 @@ Read spec Part 1 and the corresponding reference-file findings before writing. T
 - [ ] **Step 2:** Write the patterns listed in spec Part 3. Each must name the failure it prevents and be usable as an analytical lens without the reader having the source open.
 - [ ] **Step 3:** For The Autonomy Rung: frame around the rung and the machine-checkable stop condition. **Do not assert a coiner.** Include the auditable gap that the config is usually in the repo while the runtime state is not.
 - [ ] **Step 4:** For Aggregate Accuracy Is a False Average and The Rubber Stamp, make the check concrete — what number to ask for, and what the number means if it is missing.
-- [ ] **Step 5:** Count the patterns. Confirm the total matches Task 1's assertion exactly. `npm test` — the pattern-count assertion should now pass. Commit.
+- [ ] **Step 5:** Count the patterns. The total must be exactly **38** (29 existing + 9 new), matching Task 1's assertion. `npm test` — the pattern-count assertion should now pass. Commit.
 
 ---
 
