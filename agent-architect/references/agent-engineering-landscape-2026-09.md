@@ -48,6 +48,16 @@ one place, and each has been annotated in place rather than silently corrected:
   fact in its "Community amplification" sentence, even though this file's own "Could not
   source" section (practitioner sweep) records that role as asserted only by aggregators
   and Osmani's secondhand mention — the two are now cross-annotated so they agree.
+
+**A second, unrelated conflict — about sourcing status rather than attribution.** The OpenAI
+sweep listed its spend-limits guide as "fetched, live guide" in its Sources block while its own
+raw source log recorded the same URL as described from a search summary and never retrieved.
+Both sides are now annotated. The rule this yields: **when a sweep’s Sources list and its own raw
+source log disagree about whether a page was actually retrieved, the raw source log wins.** A
+Sources list records intent; the log records what happened. In this instance the facts survived
+anyway, because the dated changelog entries carry them independently — but that was luck, not
+method, and it is exactly the case where a reader who only saw the Sources block would have
+over-trusted the claim.
 - The research-literature sweep's terms-of-art entry (line 789) names no coiner, so it is
   not itself a conflict, but it is now cross-linked to the governing reconciliation above
   so a reader landing there first is routed correctly.
@@ -293,7 +303,7 @@ that silently contradicts itself is worse than one that shows its working.
 - **Audit implication:** Check two things in the retry/backoff layer: (1) does the system treat `organization_spend_limit_exceeded`/`project_spend_limit_exceeded` as terminal (requires human/billing action) rather than retryable — a naive retry loop will hammer a hard-capped account and burn latency for no benefit; (2) does it now branch retry strategy on `slow_down` (back off own request rate) versus `server_is_overloaded` (503, transient vendor-side, retry-with-backoff is appropriate) rather than treating all 429/503s identically as before this split existed.
 - **Maps to:** Cost as Architecture (hard spend limits) / The Recovery Ladder (rate-limit error split) — both existing patterns, newly given concrete, checkable API surface.
 - **Sources:**
-  - https://developers.openai.com/api/docs/guides/spend-limits (fetched 2026-09-08, live guide)
+  - https://developers.openai.com/api/docs/guides/spend-limits — **source status disputed within this file: the raw source log records this page as described from a search summary and NOT independently re-fetched. Treat it as unverified.** The spend-limit facts above do not rest on it; the error codes and dates are independently carried by `api/docs/changelog`, which the log confirms was fetched.
   - https://developers.openai.com/api/docs/changelog — entries dated 2026-07-22 and 2026-09-02
 
 ### Daybreak splits into Blue/Red tiers with GPT-5.6-Cyber, and ships concrete application-layer safeguards auditors of security-tooling agents must check (2026-08-10)
@@ -319,7 +329,7 @@ that silently contradicts itself is worse than one that shows its working.
 - https://developers.openai.com/api/docs/guides/responses-multi-agent — fetched, live product doc, no page date, used for multi-agent mechanics
 - https://developers.openai.com/api/docs/guides/your-data — fetched, live product doc, no page date, used for regional-processing mechanics
 - https://developers.openai.com/api/docs/guides/mtls — 404, does not exist at that path; mTLS/workload-identity details taken from changelog entry only
-- https://developers.openai.com/api/docs/guides/spend-limits — found via search, described in search summary (hard spend limit error codes and mechanics); not independently re-fetched in full
+- https://developers.openai.com/api/docs/guides/spend-limits — found via search, described in search summary (hard spend limit error codes and mechanics); not independently re-fetched in full *(This entry governs: the sweep’s own Sources list marked the same URL "fetched, live guide". Per the precedence rules at the top of this file, the more conservative record of what was actually retrieved wins. The facts survive on the changelog.)*
 - https://developers.openai.com/cookbook/examples/partners/agentic_governance_guide/agentic_governance_cookbook — fetched, no clear publication date found on page; used cautiously, not built into a dated theme because date is unconfirmed
 - https://developers.openai.com/cookbook/examples/evaluation/moving-from-openai-evals-to-promptfoo — found via search, confirms OpenAI's own recommended non-OpenAI migration path off Evals
 - https://openai.com/index/expanding-daybreak-as-the-cyber-defense-window-narrows/ — fetched via browser tool, confirmed date 2026-08-10, full primary content on Daybreak Blue/Red, GPT-5.6-Cyber, hardware-key requirement, auto-review mode guidance
