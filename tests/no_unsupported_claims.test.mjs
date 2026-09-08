@@ -26,7 +26,22 @@ const CHECKLIST_DIR = path.join(root, 'agent-architect/checklists');
 const ALLOW_MARKER = /<!--\s*source-claim-ok:\s*\S+/;
 
 // A hedge already scoping the claim to what was actually observed.
-const HEDGED = /\b(at least one|one major|some |a few|not all|several vendors)/i;
+//
+// This is deliberately NOT tested against the whole line. A hedge only exempts a
+// claim when it *scopes* that claim, and a hedge sitting anywhere on the line is
+// not evidence of that: "Frameworks now ship built-in confinement, which helps in
+// some deployments" hedges the usefulness, not the "frameworks now ship" claim,
+// and the whole-line test read it as scoped. So the hedge has to sit in the same
+// clause, immediately ahead of the matched construction.
+const HEDGED = /\b(at least one|one major|some|a few|not all|several vendors)\b/i;
+const HEDGE_WINDOW = 60;
+
+const hedgeScopes = (line, index) => {
+  const runUp = line.slice(Math.max(0, index - HEDGE_WINDOW), index);
+  // Stop at the nearest clause boundary — a hedge in the previous sentence
+  // scopes that sentence, not this one.
+  return HEDGED.test(runUp.split(/[.;:—]\s/).pop());
+};
 
 const CLAIM_PATTERNS = [
   {
@@ -35,11 +50,24 @@ const CLAIM_PATTERNS = [
     fix: 'Scope it ("at least one major …") or cite the source that shows it is industry-wide.',
   },
   {
+    // `(?:-\w+)*` catches the hyphenated qualifier — "the largest-N study" — that
+    // the whitespace-only version of this pattern walked straight past.
     name: 'source-superlative',
-    re: /\bthe\s+(largest|first|biggest|strongest|most\s+\w+)\s+(?:[\w-]+\s+){0,3}(study|assessment|analysis|measurement|survey|benchmark|evaluation)\b/i,
+    re: /\bthe\s+(largest|first|biggest|strongest|most\s+\w+)(?:-\w+)*[\s-]+(?:[\w-]+\s+){0,3}(study|assessment|analysis|measurement|survey|benchmark|evaluation)\b/i,
     fix: 'Superlatives about a source must be the source\'s own words. Quote them in the marker.',
   },
 ];
+
+// One decision procedure, shared by the corpus tests and the checklist sweep, so
+// the corpus cannot certify behaviour the sweep does not actually use.
+const findClaim = (line) => {
+  if (ALLOW_MARKER.test(line)) return null;
+  for (const pattern of CLAIM_PATTERNS) {
+    const m = line.match(pattern.re);
+    if (m && !hedgeScopes(line, m.index)) return pattern;
+  }
+  return null;
+};
 
 test('checklist claims do not exceed their sources unannotated', () => {
   const violations = [];
@@ -47,12 +75,9 @@ test('checklist claims do not exceed their sources unannotated', () => {
   for (const file of fs.readdirSync(CHECKLIST_DIR).filter((f) => f.endsWith('.md'))) {
     const lines = fs.readFileSync(path.join(CHECKLIST_DIR, file), 'utf8').split('\n');
     lines.forEach((line, i) => {
-      if (ALLOW_MARKER.test(line) || HEDGED.test(line)) return;
-      for (const { name, re, fix } of CLAIM_PATTERNS) {
-        if (re.test(line)) {
-          violations.push(`${file}:${i + 1} [${name}] ${fix}\n    ${line.trim().slice(0, 120)}`);
-          break;
-        }
+      const claim = findClaim(line);
+      if (claim) {
+        violations.push(`${file}:${i + 1} [${claim.name}] ${claim.fix}\n    ${line.trim().slice(0, 120)}`);
       }
     });
   }
@@ -74,6 +99,13 @@ const MUST_TRIP = [
   'Enterprise identity platforms now split these as first-class identity types.',
   'Vendors now offer sponsor-lifecycle workflows against orphaned identities.',
   'This is the largest published dynamic behavioral assessment of these servers.',
+  // A hedge that does not scope the claim. `HEDGED` was tested against the whole
+  // line, so a trailing "in some deployments" disarmed both patterns from the far
+  // end of the sentence.
+  'Frameworks now ship built-in confinement, which helps in some deployments.',
+  // The superlative regex demanded whitespace after the adjective, so a
+  // hyphenated qualifier walked straight through it.
+  'The largest-N study of long-horizon degradation found the opposite.',
 ];
 
 const MUST_NOT_TRIP = [
@@ -81,10 +113,11 @@ const MUST_NOT_TRIP = [
   'At least one major enterprise identity platform now splits these into separate types.',
   'Untrusted content can change which tools are called or in what order.',
   'Voice behavior depends on provider defaults, which vary between vendors.',
+  // A hedge that genuinely scopes the construction it sits in front of.
+  'Some providers now ship a signed capability manifest with their tool list.',
 ];
 
-const trips = (line) =>
-  !ALLOW_MARKER.test(line) && !HEDGED.test(line) && CLAIM_PATTERNS.some(({ re }) => re.test(line));
+const trips = (line) => findClaim(line) !== null;
 
 test('the claim guard catches the overclaim shapes this release actually shipped', () => {
   const missed = MUST_TRIP.filter((line) => !trips(line));

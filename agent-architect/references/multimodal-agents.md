@@ -32,7 +32,7 @@ Multimodal agents are not text agents with extra inputs. Each modality adds a ru
 
 - Treat image, audio, video, page DOM, screenshots, and generated media as untrusted instruction channels.
 - Quarantine untrusted media interpretation from privileged action execution.
-- Require human review for external side effects driven by visual or audio content.
+- Require human review for external side effects driven by visual or audio content — and do not credit that review as the mitigation without evidence the approvals discriminate (denials that happen, for reasons connected to the risk). An approval prompt granted as a matter of routine is a consent and logging mechanism, not a control; see `checklists/security.md` 2.8 for the evidence test and what to do when the telemetry does not exist.
 
 ## Eval Implications
 
