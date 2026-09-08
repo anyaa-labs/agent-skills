@@ -29,6 +29,11 @@ There is no baseline to compare against. You cannot tell if a prompt change made
 ### 1.5 No Trace or Terminal-State Evaluation for Agents
 Evals score final text but not the tool-call trace, state mutations, approval decisions, artifact outputs, or final database/workspace state.
 
+### 1.6 Monitor or Judge Quality Reported Only as an Aggregate Number
+A safety monitor, classifier, or LLM judge is justified by a single headline figure — accuracy, catch rate, precision/recall, pass rate — computed over a mixed eval set. That aggregate is a false average. It is dominated by the cases where some *other* signal would also have caught the problem, and it conceals the subset where the monitor is the only thing standing between the failure and production. Measured directly: a chain-of-thought monitor holding a very high aggregate catch rate fell to a small fraction of that rate on the subset of hacks where the reasoning trace was the only tell — under an attack that rewrote only the reasoning trace and left every command and output byte-identical, that transferred across monitor families and agent models, and that trace-only defenses recovered from only partially even when primed on the attack itself. The number the team quotes and the number that carries the safety case are different numbers.
+
+**What to look for:** For each failure category the monitor is credited with catching, ask what else in the system would have caught it — test outcomes, byte-level diffs, external verification, an independent-of-trace signal. Then ask for the monitor's accuracy **on the subset where it is the only defense**. If that number does not exist, the safety case has not been measured; say so rather than accepting the aggregate. Specific red flags: one accuracy figure quoted for a monitor across a mixed eval set with no per-category or only-defense breakdown; a monitor whose primary evidence is the model's own reasoning trace, which is an output the agent under evaluation controls and can shape while leaving its actions unchanged; a safety argument of the form "our monitor catches N% of X" where nobody has partitioned X by what other signal covers it; monitor eval sets built only from attacks the actions already give away.
+
 ## Pass 2 — Important
 
 ### 2.1 Manual-Only Evals
@@ -54,6 +59,11 @@ The same score blends task success with safety behavior, hiding agents that comp
 
 ### 2.8 No Modality-Specific Eval Cases
 Voice, image, video, realtime, or computer-use agents are evaluated only through text cases.
+
+### 2.9 LLM Judge Never Probed for Rubric Artifacts
+The judge is validated (if at all) on agreement with human labels, and never tested for whether its verdict depends on the candidate response at all. Two cheap probes close that gap. **Rubric-only ablation:** predict the judge's scores from the rubric text alone, with no access to the response being graded — classifiers trained this way have been shown to reach non-trivial accuracy, which means part of the verdict encodes rubric phrasing rather than reasoning over the output. **Criterion reversal:** flip the rubric criterion (or the candidate response) and check that the verdict flips accordingly — judges often fail to. Strength note for the auditor: this is a methodology critique rather than a benchmark-pinned result — the judge models and benchmarks it was demonstrated on are not specified — so report it as a missing probe the team can run in an afternoon, not as a claim that their judge is broken.
+
+**What to look for:** Any eval or gate whose verdict comes from an LLM scoring against a rubric, with no ablation in the eval suite. Concretely: no test case that runs the judge with the response withheld; no test that inverts a criterion and asserts the score moves; a rubric that has been iteratively tuned until scores looked right (rubric-shaped overfitting is exactly what these probes detect); a judge whose scores are stable across substantially different candidate responses. Both probes belong in the eval suite as standing cases, not as a one-off investigation.
 
 ## Pass 3 — Minor
 
