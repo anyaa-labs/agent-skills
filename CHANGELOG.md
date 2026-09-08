@@ -1,5 +1,209 @@
 # Changelog
 
+## [0.9.0] — 2026-09-08
+
+A research release. `references/agent-engineering-landscape-2026-09.md` records a
+primary-source sweep of agent engineering between 2026-06-08 and 2026-09-08 — the loop,
+the harness, identity, evaluation, and the failure modes that are not properties of any
+one model — and this release is what that sweep changed in the skill. Every claim below
+tracks a labelled finding in that file; where the file labels a result `suggestive` or
+single-domain, the checklist says so and the auditor is told not to flag on it alone.
+
+### Fixed — advice the skill was giving that the sweep contradicts
+
+Two places. The release was planned as four, and the framing "four places the skill is
+actively wrong" is **not accurate** — independent greps taken before any edit found that
+two of the four had nothing to correct. Both are recorded below under Added, where they
+belong.
+
+- **Long-horizon degradation was prescribed a context fix without an attribution step.**
+  `context-management.md` 1.4 asserted that a model's attention to early instructions
+  degrades after enough turns, and offered reset/summarization/compaction as the remedy.
+  Two separable mechanisms produce the same symptom — accumulated context and accumulated
+  steps — and the largest-N study in this sweep found that bounding the context window
+  made decay *steeper*, not shallower, on an agentic tool-use loop, with degradation
+  tracking step count. So the standard fix is a known-wrong fix for one of the two
+  mechanisms, and the skill named no way to tell which one you were looking at. New Pass 1 finding
+  `context-management.md` **1.7** carries the attribution test; 1.4 is now the missing
+  *recovery point* (which stands either way) with the causal claim removed; Pattern 3
+  (Context is Calories) gained "attribute the decay before prescribing a diet."
+  Pattern 4 (Fresh Eyes Doctrine) was still prescribing an unconditional context reset one
+  entry down the same list, and now conditions it on that attribution step.
+- **A human approval gate was counted as a mitigation with nothing asked of it.** It was
+  the escape hatch on the Rule of Two, one of four equal members of the harness inspection
+  set, a substitute for validation before persistence, and a Strong anchor in the Harness
+  Architecture rubric — everywhere on the strength of existing, nowhere on the strength of
+  working. Vendor telemetry on a production coding agent shows near-total approval of
+  individual tool calls and markedly more scrutiny applied to whole plans than to the
+  actions composing them: granularity buys consent, not scrutiny. New `security.md` **2.8**
+  states the rule — a gate is a control only if approvals are sometimes refused for
+  risk-connected reasons — and makes denial telemetry the checkable artifact. Every crediting site
+  now defers to it, and the rubric anchor reads "with evidence those
+  approvals discriminate." Percentages were deliberately left out of the checklists and
+  stated directionally instead; they live in Pattern 33, attributed to the one vendor whose
+  users they describe.
+
+### Added — Agent Identity & Authorization, the 13th dimension
+
+- **Agent Identity & Authorization** (weight 1.0x, conditional). It runs only when Discovery's
+  new step **2.11** finds delegated authority — an agent holding a credential of its own, a
+  sub-agent or tool acting under an inherited one, a remote agent over MCP or A2A, or a hosted
+  agent-identity platform. A single-turn assistant that holds nothing and delegates to nobody
+  scores N/A and is excluded from the weighted average; it is not deficient for lacking an
+  identity architecture. Backed by `checklists/agent-identity.md`, 10 findings across three
+  passes, asking one question in several forms: **when the agent asks to do something, what
+  refuses?** A credential the agent holds and is trusted not to misuse has no answer.
+- The checklist ships with an **honesty constraint** rather than a verdict, because most of
+  the identity plane — directory configuration, conditional-access policy, certificate
+  issuance, sponsor records — is console or IaC state an auditor cannot see from the code.
+  Where the posture is not determinable, the *gap* is the finding. "Not visible here" is
+  never "not present."
+- Its Dedup Rule was written against the nearest collisions rather than around them: `security.md`
+  owns what untrusted content can do once inside and whether an action's *shape* is dangerous;
+  `multi-agent.md` owns whether the agents should exist and how they coordinate; this checklist
+  owns the authorization contract — which principal each agent acts as, what can refuse a
+  delegated action, and how far a compromised participant reaches before something outside the
+  model stops it. Where one broker does two of those jobs, the checklist says to report it once.
+- Wired into every site the dimension name appears in: the frontmatter description, the Discovery
+  gate at step 2.11, the Deep Evaluation read list, the scoring rubric, the score table, the TREND
+  table, and the regression note. The N/A phrasing matches the Memory / Sovereignty / Multimodal
+  precedent verbatim rather than inventing a fourth wording for the same idea.
+
+### Added — cognitive patterns 30-38 (29 → 38)
+
+30. **The Autonomy Rung** — autonomy is a rung, not a dial; name the rung, then ask what stops it.
+31. **Escalation Is a Tool, Not a Failure** — an agent whose only options are succeed or fail invents a third.
+32. **Aggregate Accuracy Is a False Average** — ask for accuracy on the subset where the signal is the only defence.
+33. **The Rubber Stamp** — an approval gate is a control only if someone can show it refusing.
+34. **Summary Collapse** — under a tight handoff budget the facts survive and the rules governing their use do not.
+35. **No Referee by Default** — divergent goals on a shared resource resolve however the agents improvise.
+36. **Phantom Guardrail** — a self-improving harness can accrete defences against failures that never happened.
+37. **Identity Is Provisioned, Not Assumed** — which principal does each agent present, and what can refuse it?
+38. **Transactional Authority** — once an agent can move money, its budget is an authority boundary, not a preference.
+
+Calibration is deliberately uneven across the nine, because the evidence is. Pattern 34 names
+its testbed; Pattern 36 says explicitly that it is a shape to look for and not a measured
+prevalence; Pattern 38 is marked as one vendor's shipped middleware rather than a base rate;
+Pattern 30 says the surrounding vocabulary is contested and holds it loosely.
+
+### Added — the two corrections that turned out to be additions
+
+Both were planned as fixes and are not. The skill had never given the wrong advice; it had
+said nothing at all, which is a different defect and warrants a different tone in the finding.
+
+- **No aggregate-accuracy claim for a monitor or judge existed anywhere to correct.** What was
+  missing was the question. `eval-infrastructure.md` **1.6** now asks for a monitor's accuracy on
+  the subset where its signal is the only defence — a chain-of-thought monitor's high aggregate
+  catch rate collapses to a small fraction of it there, against an adversary that rewrites only
+  the trace and leaves commands and outputs byte-identical, and it transfers across monitor
+  families and agent models (`strong`). Its Pass 2 companion **2.9** adds rubric-only and
+  criterion-reversal probes for LLM judges, and is hedged accordingly: that source is
+  `suggestive`, a methodology critique whose judge models and benchmarks are not detailed in the
+  abstract, so the auditor reports a missing probe and not a broken judge.
+- **No guidance anywhere keyed recovery on mid-trajectory confidence.** `production-readiness.md`
+  **2.8** adds it as a question with a "Scope — read before flagging" paragraph attached:
+  single-domain (deep-research tasks), two signals tested, `suggestive`, and explicitly not an
+  automatic defect — a team that can show from its own traces that a mid-run signal predicts
+  outcome on its task class closes the finding.
+
+### Added — findings across eight existing checklists
+
+- `multi-agent.md` — shared resource with no referee (1.5), read+write surfaces never enumerated
+  (1.6), unlogged private inter-agent channel (2.10), identical agents counted as independent
+  when their failures correlate (2.11), and summary collapse across a handoff (2.12). The
+  contention finding collided with a pre-existing Shared Mutable State item the plan did not know
+  about; it is written as the goal-divergence case, with the older finding redirecting up to it.
+- `security.md` — third-party MCP servers assumed authenticated and shell-free (1.9), and MCP
+  security posture evidenced only by an automated scanner (2.9): what a clean scan is and is not
+  evidence of.
+- `tool-design.md` — agent-to-agent and agent-to-tool boundaries collapsed into one harness layer
+  (2.11), whose sharpest form is an agent exported as an MCP server: unless the exported surface is
+  narrowed at the point of export, the caller's blast radius silently becomes the union of its own
+  tools and the callee's.
+- `harness-architecture.md` — no escalation channel distinct from failing or working around it (1.7),
+  an unnamed autonomy rung or one whose stop condition is not machine-checkable (1.8), a Recovery
+  Ladder with no state-restore rung (2.7), and a self-improving harness accepting guardrails without
+  verifying the failure occurred (2.8).
+- `memory-architecture.md` — a write-time similarity gate is not evidence of benignity (1.7). The
+  attack's success figures are omitted entirely and the self-defined-baseline caveat is stated
+  twice, so the grading instruction points at absent provenance, frequency and cross-session
+  signals rather than at the attack's strength.
+- `eval-infrastructure.md` — eval integrity treated as adversarial rather than design-time (1.7), a
+  third-party judge neither version-pinned nor calibrated (2.10), a benchmark score accepted as
+  capability evidence without an exposure audit (2.11), and eval infrastructure configuration not
+  held constant across compared runs (2.12).
+- `context-management.md`, `production-readiness.md` — see the two sections above.
+
+### Added — model profile facts
+
+- `openai.md` — an Agents SDK guardrail-output leak into replay and persisted state (v0.22.0); a
+  silent default-model swap in v0.20.0, framed as harness expiry rather than a release note; spend-limit
+  429s are terminal and not retryable; the `slow_down` / `server_is_overloaded` split; mTLS/X.509 GA.
+- `anthropic.md` — no built-in memory expiration; the 2026-08-31 thinking-block replay cutover.
+- `google.md` — the Interactions API at GA as the default agent interface.
+
+The plan expected three of the researched facts to be already present. Five were — xAI's `xhigh`
+effort level was in the profiles in three places, and the Anthropic memory-tool path-traversal fact
+was there too, with only its "no built-in expiration" half genuinely new. `xai.md` was correctly left
+untouched.
+
+### Added — mechanical guards
+
+- **`tests/no_unsupported_claims.test.mjs`.** Claims exceeding their source appeared in four
+  consecutive tasks of this release — pluralizing a single-vendor fact into "frameworks now ship",
+  attaching "largest" or "first" to the wrong paper, upgrading "in this sweep" to "to date". Per-task
+  correction was not working, so the class got a guard. It greps `checklists/` for two shapes
+  (plural-vendor capability claims, superlatives attached to a source) with a
+  `<!-- source-claim-ok: ... -->` escape hatch that requires quoting what the reference actually says.
+  Two-sided corpus, mutation-verified, zero false positives across all 13 checklists. It appears to be
+  working: the next instance of the class was the first in the release caught *before* landing — an
+  implementer refused a brief of mine that called a finding "the best-evidenced in the sweep", because
+  the reference labels at least seven findings `strong` and ranks none of them. It is still a grep
+  guard over two shapes, not a proof: a claim phrased outside them still gets through, and it does
+  **not** cover `CHANGELOG.md`, `README.md`, the patterns in `SKILL.md`, or `references/`.
+- A **contract test asserting every "N-dimension" claim anywhere in `SKILL.md` agrees with the
+  dimension count.** The mode table still said "12-dimension" after the 13th dimension landed: it
+  contains no dimension *name*, so a name-derived grep structurally could not find it, and the old
+  test only checked the frontmatter phrase. That class of miss is now closed by count rather than
+  by vigilance.
+
+Suite 18 → 22.
+
+### Known gaps in the underlying research
+
+Recorded so a reader can tell what was checked and came back empty, rather than inferring that
+silence means nothing was there.
+
+- **"Loop engineering" has no verified coiner, and its own popularizer credits no originator.**
+  Aggregators uniformly credit a 2026-06-07 X post; that permalink is unfetchable, and the author's
+  own post index contains no post on loops at all. The earliest primary long-form use found claims no
+  coinage. Pattern 30 therefore audits the rung and the stop condition and holds the label loosely.
+  The same goes for the widely repeated claim about who inside Anthropic practices it — asserted by
+  aggregators and one secondhand mention, primary-sourced nowhere in this sweep. "Context rot" and
+  "comprehension debt" are likewise used as settled vocabulary with no coinage page located.
+- **`x.com` returns HTTP 402 to the fetch tooling**, so no X post could be verified as primary. This
+  blocked attribution work for several terms and left at least one vendor's apparent primary source
+  for a widely reported agent product unreachable; the associated claims are recorded as unsourced
+  rather than promoted.
+- **Several frequently cited sources published nothing in the window.** Indexes were fetched, not
+  merely searched: Karpathy's blog index has no June–September 2026 entries at all (latest 2026-04-30),
+  Cognition's stops at 2026-07-28, and searches for Lilian Weng, Chip Huyen, Jason Liu and Omar Khattab
+  returned only aggregator and course-marketing pages on the topics in scope. Recorded as a gap rather
+  than filled. The individual-author signal that *did* land came from a smaller set — Simon Willison,
+  Addy Osmani, Hamel Husain, Eugene Yan — with most of the quarter's remaining practitioner material
+  coming from company engineering blogs. Any "X said this summer" claim about the absent names should
+  be treated as unsourced until a primary page is produced.
+- **The reference file contradicted itself in two unrelated ways**, both found during implementation
+  and both annotated in place rather than silently corrected. The five sweeps ran independently and
+  were concatenated without reconciliation: one sweep credited a coiner for "loop engineering" while
+  another recorded the origin unconfirmed — an attribution conflict that then turned out to recur in
+  more than one place, including inside the sentence written to fix it; and separately, one sweep's
+  Sources block listed a page as fetched while its own raw source log recorded the same URL as never
+  retrieved. The file now carries two
+  precedence rules — the sweep holding the earlier primary source wins on attribution, and when a
+  Sources list and the raw source log disagree about retrieval, the log wins — with both sides of
+  each conflict left visible.
+
 ## [0.8.1] — 2026-09-08
 
 Follow-ups parked during the 0.8.0 review, plus one field the review only
