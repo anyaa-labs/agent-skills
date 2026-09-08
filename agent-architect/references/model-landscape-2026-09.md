@@ -42,6 +42,24 @@ Status of every family in the design doc's provisional inventory (`docs/superpow
 - The design requires **at least three primary-provider links per family file.** Every family above clears it except **Microsoft Phi (2)**, which is why it is not recommended for a file. Inside `regional-other.md`, **ALLaM carries only 2** — flag it with the explicit evidence caveat the design's risk section already prescribes.
 - The design requires **eleven field headings** per family file. This brief supplies `### Current models`, `### Runtime contract notes`, `### Deployment & residency`, `### Retired`, and `### Primary sources`. The remaining headings (API surface, reasoning state, tool semantics, modality support, context behavior, structured output path, known production failure modes, harness requirements, re-evaluate when) are all **derivable from the runtime-contract notes below**, which were written with those fields in mind — but they are not pre-split. Tasks 4–7 do that split.
 
+### Inventory sweep (added 2026-09-08, after the release review)
+
+**The reconciliation above could only VERIFY, DROP or MERGE families the design doc had already named. Nothing in it asked which families were missing from that list altogether.** IBM Granite was added only because a researcher happened to notice it in passing. That gap shipped: **xAI/Grok was omitted from the release entirely** — no profile, no index row, no API-ID mapping, and no Discovery grep term, so the skill could not detect Grok at all, even though Grok 4.6 is explicitly positioned for long-running agents. This subsection records the corrective sweep, so the same class of omission is answered by a decision rather than by silence.
+
+| Family | Decision | First-party links | Reason |
+| --- | --- | --- | --- |
+| **xAI (Grok)** | **ADD** — `xai.md`, tier `frontier` | 24 | The original omission. Frontier lineup positioned for long-running agents, a Responses-vs-legacy-Chat-Completions split with real agentic consequences, encrypted reasoning, remote MCP, context compaction, a voice/realtime surface, and a **silent-redirect retirement mechanic** that makes a retired slug look healthy in production. |
+| **Amazon Nova** | **ADD** — `amazon-nova.md`, tier `frontier` | 24 | Bedrock-native and therefore invisible to a vendor-SDK grep. **No OpenAI-compatible path exists to Nova at all**, which breaks the common portability assumption; extended thinking returns `[REDACTED]`; a 20K prompt-cache cap sits against a 1M window; and Nova 2 Lite has **no in-region deployment anywhere**, only cross-region inference — directly load-bearing for the Sovereignty & Residency dimension. |
+| **AI21 (Jamba)** | **ADD** — `ai21.md`, tier `open-weight` | 18 | A 256K window paired with a **4,096-token output ceiling** and AI21's own advice to chunk above ~10K tokens — an operating envelope 25× smaller than the advertised one. Agent-loop features live in **Maestro**, a layer above the chat API. Version-split self-hosting parsers (`jamba` vs `hermes`) and a license that differs between Jamba Large and Jamba2. |
+| **Nvidia Nemotron** | **ADD** — `nvidia-nemotron.md`, tier `open-weight` | 14 | Both hosted and self-hosted, with **OpenAI- *and* Anthropic-compatible endpoints** on the same NIM container. Hard harness requirements: `--tool-call-parser qwen3_coder` (Nemotron borrows Qwen3-Coder's parser), `--reasoning-parser nemotron_v3`, fp32 Mamba-2 SSM cache, `trust_remote_code` for Omni. A real `guided_json`/EBNF grammar path. NVIDIA names two agent failure modes itself. |
+| **Ai2 OLMo** | **ADD** — `ai2-olmo.md`, tier `open-weight` | 11 | Apache 2.0 with **no first-party inference API** — three third-party providers, three different model-ID conventions for the same weights, so a model string in code says nothing about who serves it or under what retention. Concrete harness facts: `--tool-call-parser olmo3` on `vllm>=0.11.1`, documented MCP support, 65,536 context via **YaRN over an 8K base**. Two headings (structured output, retirement) are honest "not documented" entries rather than padding. |
+| **Reka AI** | **SKIP** | 16 | Clears the link bar, fails the substance bar. **No context window is published for any hosted model**; only `reka-flash` supports function calling by Reka's own admission; no reasoning mode; no `response_format` at all; no deprecation policy. Five of eleven headings would read "not publicly documented." Full reasoning and reconsider-when triggers are recorded under *Sweep candidates evaluated and NOT added*. |
+| **Microsoft Phi** | **SKIP** (unchanged) | 2 | Already rejected above on the three-link bar and missing tool-calling/structured-output documentation. **This sweep did not revisit it; the decision stands.** |
+
+**Families deliberately not treated as separate entries** (recorded to close the question): OpenAI's `gpt-oss` stays folded into `openai.md` and Google's Gemma into `google.md` — same vendor, no separate file. Ai2's **Molmo** (multimodal) and **OLMoASR** (speech) are separate families from OLMo and are **not** covered by `ai2-olmo.md`; a system running either needs its own research pass. Nvidia's non-LLM catalog entries (OCR, parse, ASR, voice chat, embed/rerank, NeMo Guard safety models) are components, not chat-model families, and are named in the Nemotron section rather than profiled.
+
+**Process fix.** A reconciliation scoped to a provisional list can only ever confirm that list. Any future refresh must run an explicit *absentee* pass — "which families would a 2026 production agent system plausibly run that this skill cannot currently detect?" — before the VERIFY/DROP/MERGE pass, and record an ADD or SKIP for every candidate it considers, including the ones it rejects.
+
 ---
 ## Anthropic Claude
 
@@ -1383,6 +1401,536 @@ Docs moved: `developers.upstage.ai/docs/*` now 308-redirects to `console.upstage
 
 ---
 
+## xAI (Grok)
+
+**Inventory note.** This family was missing from the design doc's provisional inventory and from the Family reconciliation table above; it was added on a later sweep (see *Inventory sweep* under Family reconciliation). Everything below was fetched on 2026-09-08 from pages xAI owns — `docs.x.ai` (every page is served as markdown by appending `.md` to its URL) and `x.ai`.
+
+**Branding note for detection.** The documentation site is now branded **"SpaceXAI Docs"** and the model pages describe Grok as "SpaceXAI's frontier model," while the API host (`https://api.x.ai/v1`), the console (`console.x.ai`), the SDK (`xai_sdk`), and the environment variable (`XAI_API_KEY`) are all still `xai`/`x.ai`. Code detection should key on the API host and the `grok-*` model slugs, not on the vendor name in prose.
+
+### Current models
+
+| Model | Model ID | Purpose | Context | Reasoning effort |
+| --- | --- | --- | --- | --- |
+| Grok 4.6 | `grok-4.6` | "SpaceXAI's frontier model built for coding, agentic tasks, and knowledge work" | 500K | `low`/`medium`/`high` (default) / `xhigh` |
+| Grok 4.5 | `grok-4.5` | Coding, agentic tasks, knowledge work | 500K | `low`/`medium`/`high` (default); **`xhigh` is silently treated as `high`** |
+| Grok 4.3 | `grok-4.3` | General chat and code; the redirect target for the May 2026 retirements | 1M | `none`/`low`/`medium`/`high` |
+| Grok 4.20 (reasoning) | `grok-4.20-0309-reasoning` | General chat and code | 1M | reasoning |
+| Grok 4.20 (non-reasoning) | `grok-4.20-0309-non-reasoning` | General chat and code | 1M | none |
+| Grok 4.20 Multi-agent | `grok-4.20-multi-agent-0309` | Realtime multi-agent research (**beta**) | 1M | `reasoning.effort` selects **agent count**, not depth |
+| Grok Build 0.1 | `grok-build-0.1` | Agentic coding; the model behind the Grok Build CLI | 256K | not documented |
+
+Generated-media and voice models: `grok-imagine-image-2.0` (recommended), `grok-imagine-image`, `grok-imagine-image-quality` (retired 2026-11-02), `grok-imagine-video-1.5` (recommended), `grok-imagine-video`, `grok-voice-think-fast-2.0` (speech-to-speech), `grok-voice-think-fast-1.0` (deprecated). `grok-voice-latest` routes to `grok-voice-think-fast-2.0` from 2026-08-05.
+
+Grok 4.6 was announced **2026-08-12** on `x.ai/news/grok-4-6`, positioned around "long-running agents": the post says it builds on Grok 4.5 "with a particular focus on long-running agents and more ambitious interactive and visual work," and that the model "stays with complex tasks across many steps." Its documented properties: 500,000-token context, knowledge cutoff **2026-02-01**, text and image input with text-only output, and **no text output limit**.
+
+**Aliasing convention.** `<modelname>` resolves to the latest stable version, `<modelname>-latest` to the newest version including new features, and `<modelname>-<date>` pins a specific release. Only the dated form is stable across releases — the same trap as any moving alias, and the reason `grok-4.20-0309-*` slugs carry a date while `grok-4.6` does not.
+
+### Runtime contract notes
+
+**API surface.** Base URL `https://api.x.ai/v1`. The **Responses API is the recommended surface**; the comparison page labels Chat Completions "(Deprecated)" and the Chat Completions page itself opens with a warning that it "is offered as a legacy endpoint. New features will come to the [Responses API] first." The documented gap is agentic, not cosmetic: per xAI's own comparison table, Chat Completions returns **no reasoning content** and supports **function calling only** — not the native server-side tools (search, code execution, MCP). Three client paths are documented: the OpenAI SDKs pointed at `api.x.ai/v1` (**OpenAI-compatible**, including `client.responses.create`), the native `xai_sdk` over **gRPC**, and raw REST. A separate **gRPC API** and a **WebSocket Responses mode** (for lower end-to-end latency on tool-heavy agent loops) are also documented, alongside Batch, deferred completions, mTLS authentication, and `service_tier: "priority"`.
+
+**Reasoning state.** This is where an xAI agent harness most resembles — and most differs from — an OpenAI one.
+
+- `reasoning_effort` (`reasoning.effort` on the Responses API) accepts `low`, `medium`, `high`, `xhigh`. **It defaults to `high`, and on `grok-4.6` and `grok-4.5` reasoning cannot be disabled.** `grok-4.3` additionally accepts `none`.
+- **`presence_penalty`, `frequency_penalty`, and `stop` cannot be used with reasoning models — requests including them return an error.** A harness that sets stop sequences generically across providers will hard-fail here.
+- Reasoning content is **encrypted by xAI** and returned only on request: `include: ["reasoning.encrypted_content"]` on the Responses API, or `use_encrypted_content=True` in the xAI SDK / gRPC. You send the encrypted content back to carry reasoning into a later request.
+- The stateful path is `previous_response_id`, and **responses are stored server-side for 30 days**. The docs state plainly: "If you want to continue a conversation after 30 days, please store your responses history and the encrypted thinking content locally, and pass them in a new request body." A long-lived agent that relies on `previous_response_id` alone has a 30-day cliff.
+- `grok-4.6` also exposes **summarized** reasoning, streamed as `response.reasoning_text.delta` / `response.reasoning_summary_text.delta` events (`chunk.reasoning_content` in the xAI SDK). Usage metrics expose `reasoning_tokens`.
+- For `grok-4.20-multi-agent`, **`reasoning.effort` does not control reasoning depth — it controls how many agents collaborate** (`low`/`medium` → 4 agents, `high`/`xhigh` → 16; `agent_count` in the xAI SDK). Sub-agent reasoning, tool calls and outputs are returned only when `use_encrypted_content` is set, and all sub-agent tokens and tool calls are billed. A harness that sweeps `reasoning_effort` as a cost/quality dial will quadruple its agent fan-out on this model without meaning to.
+
+**Tools.** Two categories, and the split is load-bearing for the execution loop: **built-in (server-side) tools execute on xAI's servers automatically** — `web_search`, `x_search`, `code_execution`, image generation, `collections_search`, and remote MCP — while **custom function tools pause execution and return control to the caller**.
+
+- `tool_choice` accepts `"auto"` (default), `"required"`, `"none"`, or a named function. `parallel_tool_calls` defaults to **true**; set `false` to serialize.
+- **Maximum 200 tools per request.** The root of a tool's `parameters` schema must be an object, or an `anyOf`/`oneOf` whose every branch is an object; anything else "cannot be compiled into a tool-call grammar and is rejected with a `400` error that names the tool."
+- **Server-side tool outputs are not returned in the API response** — only the invocations. `tool_calls` lists every *attempted* call; `server_side_tool_usage` lists only the successful, billable ones. An observability layer that reconstructs the agent trajectory from the API response alone will be missing every server-side tool result.
+- `max_turns` caps **assistant turns in the server-side agent loop, not individual tool calls** (a turn may fan out to many parallel calls). Critically, **a client-side tool call resets the counter**: control returns to the caller, and the follow-up request starts with a fresh `max_turns` budget. `max_turns` is therefore not a global step budget for a mixed client/server agent.
+- **With streaming, a function call arrives whole in a single chunk** rather than streamed across chunks.
+- Token accounting differs from plain chat: `completion_tokens` counts only the final text output, `prompt_tokens` is cumulative across every internal inference step of the agentic loop, and `cached_prompt_text_tokens` reports cache service.
+
+**Remote MCP.** Configured in the `tools` array with `server_url`, `server_label`, and optional `server_description`, `allowed_tools` (`allowed_tool_names` in the xAI SDK), `authorization`, and `headers`. Supported in the xAI SDK, the OpenAI-compatible Responses API, and the Speech-to-Speech API. **Only Streamable HTTP and SSE transports are supported.** The OpenAI Responses parameters **`require_approval` and `connector_id` are not supported** — an approval gate that a portable harness expects to get from the provider must be implemented client-side here. Most importantly for loadout discipline: **omitting `allowed_tools` injects every tool definition the MCP server exposes into the model's context**; xAI's own guidance is to filter with `allowed_tools` both for context cost and to restrict write-capable tools.
+
+**Structured output.** Two paths. `response_format.type` accepts `"json_schema"` (with `response_format.json_schema`), `"json_object"`, or `"text"` (default). Separately, **tool-call arguments always conform strictly to the tool's input schema — "the `strict` flag is implicitly always `true`"**, which is a meaningful difference from providers where strictness is opt-in. Schema support is a documented subset: Draft 2020-12 preferred, Draft-07 accepted; `additionalProperties` **defaults to `false` and must be set to `true` explicitly**; `format` is enforced only for `date`, `time`, `date-time`, `email`, `uuid`, `ipv4`, `ipv6`, `uri`. Constraints are guaranteed only up to `minLength`/`maxLength` 2,048, `minItems`/`maxItems` 256, `minProperties`/`maxProperties` 64 — **beyond those thresholds the schema is still accepted but conformance degrades to model behavior rather than the output engine**, which is a silent-failure shape worth naming. `not`, `if`/`then`/`else`, multi-subschema `allOf`, and unlisted `format` values are accepted but not structurally enforced. Rejected with 400: empty `enum`/`anyOf`, boolean property schemas, `maxContains`/`minContains`, and `items` as an array (use `prefixItems`).
+
+**Context behavior.** 500K on `grok-4.6`/`grok-4.5`, 1M on the `grok-4.3` and `grok-4.20` lines, 256K on `grok-build-0.1`. Long-context pricing steps up at a **200K prompt-token threshold, and is billed at the higher rate for every token in the request** once crossed — a cost cliff, not a ramp. Two documented context levers:
+
+- **Prompt caching is automatic**, but xAI "highly recommend[s]" setting `prompt_cache_key` (Responses API) or the `x-grok-conv-id` header (Chat Completions) because it routes a conversation's requests to the same server; without it "you often pay full input price on a cache-cold server."
+- **Context Compaction** (`POST /v1/responses/compact`) returns a single opaque `compaction` item (`encrypted_content`, `object: "response.compaction"`, `usage.dropped_message_count`) that stands in for the whole prior conversation. Rules: treat the blob as opaque and never parse or hand-merge it; **use the compaction item as the head of the next request and append new turns after it, never before**; one compaction per call; re-compacting an already-compacted conversation is fine; and **compaction cannot rescue a request that is already over the context limit** — it shrinks a conversation that still fits. The xAI SDK exposes in-place `chat.compact()`.
+- Silent degradation: **`logprobs` and `top_logprobs` are not supported by `grok-4.20` and newer and "will be silently ignored if set."**
+
+**Modality.** Text and image input, text output on the chat models — image limits are 20 MiB, `jpg`/`jpeg`/`png` only, **no limit on image count**, any image/text ordering, with a `detail` field of `auto` (default) / `low` / `high`. Three separate surfaces beyond text:
+
+- **Imagine** — image generation (up to 10 images per request; `quality` accepts `auto`, default since 2026-08, resolving to `low` for generation and `medium` for editing), image editing with up to 5 reference images, text-to-video / image-to-video / reference-to-video (up to 15s), video editing, and video extension. Video requests are asynchronous: start, poll by request ID, then fetch.
+- **Voice** — speech-to-speech over **WebSockets** with tool use and remote MCP, ephemeral tokens for client-side apps, SIP phone-call support; text-to-speech with inline speech tags and telephony μ-law output; speech-to-text in 25 languages with word-level timestamps, multichannel, diarization, a tunable `vad_threshold`, and "Smart Turn" end-of-turn prediction; and custom voice cloning producing a `voice_id` usable across TTS and speech-to-speech.
+- **Grok Build** (coding agent: TUI, headless, and Agent Client Protocol, with skills, plugins, MCP servers, hooks, subagents, sandbox, background tasks, worktrees) and **Grok Bot** (persistent cloud-computer teammates with connectors and approvals) are product harnesses on top of the same models, not separate API surfaces.
+
+### Deployment & residency
+
+- **Retention default: all API requests and responses are stored encrypted at rest for 30 days for abuse auditing, then deleted automatically.** xAI states it "never trains on your API inputs or outputs without your explicit permission."
+- **Zero Data Retention is team-wide, self-serve from the console, and cannot be scoped to individual API keys.** xAI explicitly does *not* recommend it for most customers, because it disables every stored-data feature: per-API-key request logging, the **stateful Responses API** (`store_messages`, `previous_response_id`), the Files API, the Collections API, the Batch API, deferred completions, stored image/video outputs (base64 only for images; video requires supplying your own `output.upload_url`), and voice-agent conversation history. Under ZDR the client must hold conversation history itself and enable `use_encrypted_content` to preserve agentic tool-calling state. Every API response carries an **`x-zero-data-retention` header** set to `"true"`/`"false"`, so ZDR posture is programmatically checkable — a rare and genuinely useful compliance affordance.
+- Compliance: **SOC 2 Type 2**; a HIPAA BAA is available via a questionnaire at `x.ai/legal/baa`; the trust center at `trust.x.ai` is NDA-gated. The Voice and Imagine overview pages additionally claim HIPAA eligibility, GDPR compliance, and that audio and generated media are "never stored or used for training."
+- **Partner platforms.** Grok is available on **Google Cloud Vertex AI** (partner model via Model Garden, publisher xAI, OpenAI-compatible including the Responses API, publisher-prefixed IDs such as `xai/grok-4.6`; data retention governed by Google Cloud Vertex AI policies) and on **Microsoft Foundry** (Azure-managed endpoints, Microsoft Entra ID / RBAC, serverless or PTU SKUs, billed through Azure Marketplace; **the deployment name you choose becomes the `model` value**, so the model string in code need not resemble a Grok slug at all). The `grok-4.6` page also names Cursor and the OpenRouter, Vercel, and Cloudflare gateways.
+- **Residency is the weakest-documented area.** The Voice and Imagine pages claim "EU data residency options" and "Data Residency — Regional processing for compliance requirements," and the release notes record that "Grok 4.5 is now available in the API console for EU users" (July 2026). **No region list, no per-endpoint or per-model residency matrix, and no processing-vs-storage distinction is published on any xAI-owned page reached in this pass.** Do not assert xAI residency guarantees at the level the OpenAI section states them.
+
+### Retired
+
+| Announced / effective | Models | Replacement |
+| --- | --- | --- |
+| Effective **2026-05-15, 12:00 PM PT** | `grok-4-1-fast-reasoning`, `grok-4-fast-reasoning`, `grok-4-0709` | `grok-4.3` with **`low`** reasoning effort |
+| Effective **2026-05-15, 12:00 PM PT** | `grok-4-1-fast-non-reasoning`, `grok-4-fast-non-reasoning`, `grok-3` | `grok-4.3` with **`none`** reasoning effort |
+| Effective **2026-05-15, 12:00 PM PT** | `grok-code-fast-1` | `grok-build-0.1` |
+| Effective **2026-05-15, 12:00 PM PT** | `grok-imagine-image-pro` | `grok-imagine-image-quality` |
+| Effective **2026-11-02** | `grok-imagine-image-quality` | `grok-imagine-image-2.0` with `quality` set to `low` |
+| Deprecated (no date given) | `grok-voice-think-fast-1.0` | `grok-voice-think-fast-2.0` |
+
+**The retirement mechanic is the finding, not the list.** xAI's docs state that after 2026-05-15 "requests to the retired model slugs above will automatically redirect to `grok-4.3`. The slugs themselves continue to resolve, so you do not need to change your code to avoid breakage." A codebase pinned to `grok-3` or `grok-4-fast-reasoning` therefore **keeps working while silently running a different model at a different price and a reasoning effort xAI chose for you** — no error, no deprecation warning at the call site. This is the opposite of the loud-failure retirement that most families in this brief exhibit, and an audit that greps for retired slugs must treat a live-looking integration as a finding rather than evidence of health. The same applies at the image layer on 2026-11-02.
+
+### Primary sources
+
+- [Models](https://docs.x.ai/developers/models)
+- [Grok 4.6](https://docs.x.ai/developers/grok-4-6)
+- [Grok 4.6 announcement](https://x.ai/news/grok-4-6)
+- [Reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning)
+- [Generate text (Responses API)](https://docs.x.ai/developers/model-capabilities/text/generate-text)
+- [Comparison with Chat Completions API](https://docs.x.ai/developers/model-capabilities/text/comparison)
+- [Chat Completions (legacy)](https://docs.x.ai/developers/model-capabilities/legacy/chat-completions)
+- [Tools overview](https://docs.x.ai/developers/tools/overview)
+- [Function calling](https://docs.x.ai/developers/tools/function-calling)
+- [Tool usage details](https://docs.x.ai/developers/tools/tool-usage-details)
+- [Advanced tool usage](https://docs.x.ai/developers/tools/advanced-usage)
+- [Remote MCP tools](https://docs.x.ai/developers/tools/remote-mcp)
+- [Structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs)
+- [Context compaction](https://docs.x.ai/developers/advanced-api-usage/context-compaction)
+- [Prompt caching](https://docs.x.ai/developers/advanced-api-usage/prompt-caching)
+- [Multi agent](https://docs.x.ai/developers/model-capabilities/text/multi-agent)
+- [Voice overview](https://docs.x.ai/developers/model-capabilities/audio/voice)
+- [Imagine overview](https://docs.x.ai/developers/model-capabilities/imagine)
+- [Model retirement, 2026-05-15](https://docs.x.ai/developers/migration/may-15-retirement)
+- [Release notes](https://docs.x.ai/developers/release-notes)
+- [Security FAQ (retention and ZDR)](https://docs.x.ai/developers/faq/security)
+- [Google Cloud Vertex AI](https://docs.x.ai/developers/community/google-cloud-vertex-ai)
+- [Microsoft Foundry](https://docs.x.ai/developers/community/microsoft-foundry)
+- [Grok Build](https://docs.x.ai/build/overview)
+
+### Sourcing gaps
+
+- **No data-residency region list.** "EU data residency options" and "regional processing" are claimed on the Voice and Imagine overview pages without naming a single region, and no residency or regions page exists in the documentation index. `trust.x.ai` is NDA-gated and was not reachable. **Not publicly documented as of 2026-09-08.** Do not assert an xAI processing region for any workload.
+- **Max output tokens are not published for any text model except `grok-4.6`** (documented as "No text output limit"). The models page does not list output limits. **Not publicly documented as of 2026-09-08.**
+- **Knowledge cutoffs are published only for `grok-4.6`** (2026-02-01). **Not publicly documented as of 2026-09-08** for the other text models.
+- **No self-hosting or open-weights path is documented on `docs.x.ai`.** There is no local-deployment page, no vLLM/SGLang parser flag, and no chat-template guidance — unlike the open-weight families in this brief. Treat Grok as **API-only** and do not import a self-hosting story from any third party.
+- **Day-level release dates are unavailable except for Grok 4.6** (2026-08-12, from the announcement). The release-notes page is month-grained and does not carry per-entry dates or years for the current year.
+- **`grok-build-0.1`'s reasoning-effort support is not documented** on the models or reasoning pages; the reasoning summary table covers only `grok-4.6`, `grok-4.5`, and `grok-4.20-multi-agent`.
+- Rate limits, per-region quotas, and the per-model detail pages under `/developers/models/<slug>` were not fetched this pass.
+
+---
+
+## Amazon Nova
+
+**Inventory note.** Also missing from the design doc's provisional inventory; added on the 2026-09-08 sweep. Nova is Bedrock-native and closed-weight — it appears in code as a Bedrock model ID, not as a vendor SDK, which is exactly why a grep list built around vendor names missed it.
+
+### Current models
+
+Two generations coexist. Nova 2 (launched 2025-12) is current; several Nova 1 models are now Legacy.
+
+**Nova 2 — active**
+
+| Model | Base model ID | Cross-region IDs | Context | Max output |
+| --- | --- | --- | --- | --- |
+| Nova 2 Lite | `amazon.nova-2-lite-v1:0` | `us.` / `eu.` / `jp.` geo prefixes, plus `global.amazon.nova-2-lite-v1:0` | 1M | 64K (model card) |
+| Nova 2 Sonic | `amazon.nova-2-sonic-v1:0` | none — in-region only | 1M | 64K |
+| Nova Multimodal Embeddings | `amazon.nova-2-multimodal-embeddings-v1:0` | none | not stated | n/a |
+
+The Nova 2 user guide says all Nova 2 models "support up to 1 million tokens of context and can generate up to 65,536 tokens in a single response," slightly at odds with the model cards' 64K. Both are AWS-owned; the discrepancy is recorded, not resolved.
+
+**Nova 2 Pro** is announced as the "most intelligent model for highly complex, multistep tasks" but is **in preview with access limited to Amazon Nova Forge customers**. No model card and no model ID are published — its API ID, context window, and output limit are **not publicly documented as of 2026-09-08**.
+
+**Nova 1 — mixed lifecycle**
+
+| Model | Model ID | Context | Max output | Lifecycle |
+| --- | --- | --- | --- | --- |
+| Nova Premier | `amazon.nova-premier-v1:0` | 1M | 25K | **Legacy**, EOL 2026-09-14 |
+| Nova Pro | `amazon.nova-pro-v1:0` | 300K | 5K | Active |
+| Nova Lite | `amazon.nova-lite-v1:0` | 300K | 5K | Active |
+| Nova Micro | `amazon.nova-micro-v1:0` | 128K | 5K | Active |
+| Nova Sonic | `amazon.nova-sonic-v1:0` | — | — | **Legacy**, EOL 2026-09-14 |
+| Nova Canvas (image gen) | `amazon.nova-canvas-v1:0` | — | — | **Legacy**, EOL 2026-09-30 |
+| Nova Reel (video gen) | `amazon.nova-reel-v1:0`, `amazon.nova-reel-v1:1` | — | — | **Legacy**, EOL 2026-09-30 |
+
+A second AWS-internal contradiction: the Nova 1 user guide spec table lists max output as 10K for Premier/Pro/Lite/Micro, while the Bedrock model cards say 25K / 5K. Recorded, not resolved. The Nova 1 EOL fields read "No sooner than 12/4/2025" — a date already past while the models remain Active; treat those as stale placeholders, not commitments.
+
+### Runtime contract notes
+
+**API surface — and the finding that matters most.** Bedrock now exposes five inference patterns across two endpoints: `bedrock-runtime.{region}.amazonaws.com` (Converse, Invoke, Responses, Chat Completions, Messages) and `bedrock-mantle.{region}.amazonaws.com` (Responses, Chat Completions, Messages). AWS recommends `bedrock-runtime` for new applications, and specifically positions the mantle Responses API "for agentic applications that require built-in server-side tool use (search, code interpreter), multimodal inputs, and asynchronous inference," noting that on `bedrock-runtime` "requests are always synchronous and server-side tools are not available."
+
+**But every Nova model card marks Responses: no, Chat Completions: no, and bedrock-mantle: no.** Nova 2 Lite supports Invoke and Converse on `bedrock-runtime` only; Nova 2 Sonic supports `InvokeModelWithBidirectionalStream` only (Converse: no); Multimodal Embeddings supports `StartAsyncInvoke` only. **There is no OpenAI-compatible path to Nova.** A harness abstracted over an OpenAI-shaped client cannot reach Nova without a Bedrock-native adapter, and cannot use the very Responses API that AWS itself recommends for agentic work. This is the single most consequential fact about running Nova in an agent system.
+
+**Reasoning state.** Nova 2 Lite has extended thinking, **off by default**, enabled through `additionalModelRequestFields` on Converse: `"reasoningConfig": {"type": "enabled", "maxReasoningEffort": "low"}`. `type` is `"enabled"`/`"disabled"`; `maxReasoningEffort` is `"low"`/`"medium"`/`"high"`. AWS's agent guidance: "Medium effort is optimal for agentic workflows that coordinate multiple tools and require the model to maintain context across several sequential operations."
+
+- **Reasoning content is returned as `[REDACTED]`.** AWS: "With Amazon Nova 2, reasoning content displays as `[REDACTED]`. You're still charged for reasoning tokens... We include this field in the response structure now to preserve the option of exposing reasoning content in the future." Reasoning tokens roll into `outputTokens` with **no separate reasoning-token counter**.
+- **`temperature`, `topP` and `topK` cannot be used with `maxReasoningEffort: "high"` — combining them causes an error.**
+- At high effort, output "may generate output that exceeds 65k tokens... for some problems we have see it go up to 128K tokens."
+- Extended thinking is available on **`us.amazon.nova-2-lite-v1:0` only**.
+- **Gap:** whether `reasoningContent` blocks must be replayed across turns is **not publicly documented as of 2026-09-08**. AWS's own tool-use example appends the whole assistant message (which carries the block along), but states no rule.
+
+**Tools.** Client-side tool calling uses Converse `toolConfig` with `tools[].toolSpec` (`name`, `description`, `inputSchema.json`). `toolChoice` has three forms: **Tool** (named; "will be called once, ideal for structured output use cases"), **Any** (at least one), and **Auto** (default — "the model decides whether to call a tool and how many tools to call"). Calls arrive as `toolUse` blocks with `stopReason: "tool_use"`, carrying `name`, `input`, `toolUseId`; results return as a **user-role** `toolResult` block with the matching `toolUseId`, `content`, and `status` of `"success"`/`"error"`. AWS's own schema guidance is unusually prescriptive: "Limit JSON schemas to two layers of nesting for best performance"; "Place long string arguments last in the schema and avoid nesting them"; avoid semantically similar tools. **Explicit parallel-tool-call semantics are not documented** — the Auto description implies multiple calls per turn but AWS never uses the term.
+
+Server-side tools (Nova 2 only), via `tools[].systemTool`:
+- **`nova_code_interpreter`** — sandboxed Python returning `{"stdOut", "stdErr", "exitCode", "isError"}`. Region-limited: "available in the IAD, PDX, and NRT AWS Regions. To ensure your requests are routed to a supported Region, use Global CRIS." Operational trap: "When using Bedrock API keys, you'll need to manually add `InvokeTool` permissions to the policy definitions. The default Bedrock role does not allow the `InvokeTool` action."
+- **`nova_grounding`** — web grounding.
+
+**MCP** is documented as a **client-bridge pattern**, not a native request field: "run an MCP server and let Amazon Nova discover its tools automatically through a client bridge," with Strands' `MCPClient` named as the convenience path. The AWS launch post separately says Nova 2 models "support remote MCP tools." No native MCP field exists in the Converse request.
+
+**Structured output.** Bedrock's named "Structured outputs" feature is marked **Not Supported** on every Nova card checked. Nova's documented path is **constrained decoding through forced tool choice**: "Amazon Nova models leverage constrained decoding to ensure high reliability in generated outputs. This technique uses grammar to constrain possible tokens at each generation step, preventing invalid keys and enforcing correct data types based on your defined schema." You define a tool whose `inputSchema` is the target schema and set `"toolChoice": {"tool": {"name": "..."}}`. Grammar-constrained JSON is therefore available — but only through the tool-call channel, never a `response_format` field.
+
+**Context behavior.** 1M on Nova 2 and Nova Premier; 300K on Pro/Lite; 128K on Micro. Prompt caching is supported (explicit; Nova 2 Lite and Nova Pro also list implicit) with a **1K-token minimum per checkpoint, a maximum of 4 checkpoints per request, and a 5-minute TTL** — and a hard ceiling: "Amazon Nova models support a maximum of 20K tokens for prompt caching. Prompt caching is primarily for text prompts." **A 20K cache cap against a 1M window means a long agent context is re-billed in full on nearly every turn.**
+
+Documented degradation, verbatim: "Amazon Nova Premier has a supported context length of 1 million tokens, which translates to 1M tokens of text, 500 images, or 90 minutes of video... It's performance can decline slightly as the context size increases." AWS's mitigations: long inputs first, instructions last, `[Document Start]`/`[Document End]` markers, citation-grounded responses. This guidance is written against Nova Premier; the equivalent for Nova 2 Lite at 1M was not found. Nova 2 Lite also does **not support "Count tokens"** — pre-dispatch token accounting is unavailable. Overflow/truncation semantics are **not publicly documented as of 2026-09-08**.
+
+**Modality.** Nova 2 Lite: text, image, and **video** input (audio: no, speech: no), text output. Console limits: images JPEG/PNG/GIF/WEBP ≤ 25 MB; documents CSV/DOC/DOCX/HTML/MD/PDF/TXT/XLS/XLSX ≤ 4.5 MB; one video MKV/MOV/MP4 ≤ 25 MB, or up to 1 GB via S3. Nova 2 Sonic: speech + text in, speech + text out, realtime via `InvokeModelWithBidirectionalStream`, seven languages, with "asynchronous tool use." Nova Multimodal Embeddings: text/image/video/audio in, embedding out, `StartAsyncInvoke` only. **Generated media is Nova 1 only — Canvas (image) and Reel (video) are both Legacy with EOL 2026-09-30, and no Nova 2 replacement exists in any page fetched.**
+
+### Deployment & residency
+
+- **No self-hosting.** Nova is Bedrock-only and closed-weight; licensing is the Bedrock third-party model EULA on each card.
+- **Nova 2 Lite has no in-region availability anywhere.** It is cross-region-inference only: US geo (us-east-1/2, us-west-1/2, ca-central-1, ca-west-1), EU geo (Frankfurt, Stockholm, Milan, Spain, Ireland, Paris), JP geo (Tokyo, Osaka), plus `global.` across roughly 26 regions. AWS: "If you are accessing the model from a US region, you must use the US CRIS endpoint which involves adding the `us` prefix." London, Seoul, Mumbai, Singapore, Sydney, Taipei, Tel Aviv and the UAE are **global-only**. **For a strict data-residency workload this is the headline constraint: there is no single-region Nova 2 Lite deployment.**
+- Nova 2 Sonic is the inverse — in-region only (us-east-1, us-west-2, eu-north-1, ap-northeast-1) with no geo or global CRIS. Multimodal Embeddings: us-east-1 and us-gov-west-1. Nova Pro/Lite/Micro include GovCloud (us-gov-west-1) in-region.
+- Service tiers: Nova 2 Lite supports Standard, Priority and Flex (`"service_tier"`); Reserved is not supported. Nova 2 Sonic, Lite, Micro and Multimodal Embeddings are Standard-only.
+- **Data retention is a configurable, enforceable control.** Modes are `none`, `default`, `aws_review`, legacy `provider_data_share`, and `inherit`, ordered `none < default < aws_review < provider_data_share`, set per account (`PUT /v1/data_retention`) or per project, and "enforced consistently across the Messages, Chat Completions, and Responses APIs." Under `none`, "No request or response data is written to durable storage by AWS or shared with the model provider"; where retention applies, prompts and completions are held "within the AWS boundary for up to 30 days." Enforceable by SCP through the `bedrock-mantle:DataRetentionMode` condition key. **Caveat that matters for Nova specifically: Nova is not on the Messages / Chat Completions / Responses surfaces at all, so the retention API's semantics do not describe Nova traffic** — and Nova's own per-model `allowed_modes` value is **not publicly documented as of 2026-09-08**.
+
+### Retired
+
+| Model | Model ID | Legacy | EOL | Replacement |
+| --- | --- | --- | --- | --- |
+| Nova Premier | `amazon.nova-premier-v1:0` | 2026-03-13 | 2026-09-14 | **none named** |
+| Nova Sonic | `amazon.nova-sonic-v1:0` | 2026-03-13 | 2026-09-14 | **none named** (Nova 2 Sonic inferable, never stated) |
+| Nova Canvas | `amazon.nova-canvas-v1:0` | 2026-03-30 | 2026-09-30 | **none — no Nova 2 image model exists** |
+| Nova Reel | `amazon.nova-reel-v1:0`, `-v1:1` | 2026-03-30 | 2026-09-30 | **none — no Nova 2 video model exists** |
+
+AWS's lifecycle policy: at least 6 months in Legacy before EOL; "New customers can't use Legacy models and existing customers may lose access to Legacy models after 15 days of inactivity"; after ≥3 months in Legacy the model enters public extended access where "you should expect higher pricing"; at EOL "requests made to this version will fail" and "Migration will not happen automatically." New Provisioned Throughput and new fine-tuning jobs are blocked once a model is Legacy.
+
+**AWS names no replacement model for any Legacy Nova entry** — the lifecycle table carries dates only, plus generic guidance to move to "an Active model." For image and video generation there is no forward path at all inside the Nova family.
+
+### Primary sources
+
+- [Bedrock model cards — Amazon](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-amazon.html)
+- [Model card: Nova 2 Lite](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-2-lite.html)
+- [Model card: Nova 2 Sonic](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-2-sonic.html)
+- [Model card: Nova Premier](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-premier.html)
+- [Model card: Nova Pro](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-pro.html)
+- [Model card: Nova Lite](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-lite.html)
+- [Model card: Nova Micro](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-micro.html)
+- [Model card: Nova Multimodal Embeddings](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-amazon-nova-multimodal-embeddings.html)
+- [Bedrock inference APIs](https://docs.aws.amazon.com/bedrock/latest/userguide/apis.html)
+- [Bedrock model lifecycle](https://docs.aws.amazon.com/bedrock/latest/userguide/model-lifecycle.html)
+- [Bedrock data retention](https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html)
+- [Bedrock data protection](https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html)
+- [What is Amazon Nova 2](https://docs.aws.amazon.com/nova/latest/nova2-userguide/what-is-nova-2.html)
+- [Nova 2 extended thinking](https://docs.aws.amazon.com/nova/latest/nova2-userguide/extended-thinking.html)
+- [Nova 2 reasoning capabilities](https://docs.aws.amazon.com/nova/latest/nova2-userguide/reasoning-capabilities.html)
+- [Nova 2 using tools](https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-tools.html)
+- [Nova 2 what's new](https://docs.aws.amazon.com/nova/latest/nova2-userguide/whats-new.html)
+- [Nova 2 getting started (console limits)](https://docs.aws.amazon.com/nova/latest/nova2-userguide/getting-started-console.html)
+- [Nova long-context prompting](https://docs.aws.amazon.com/nova/latest/userguide/prompting-long-context.html)
+- [Nova 2 launch announcement](https://aws.amazon.com/about-aws/whats-new/2025/12/nova-2-foundation-models-amazon-bedrock/)
+- [Amazon Nova models](https://aws.amazon.com/nova/models/)
+
+### Sourcing gaps
+
+- **Nova 2 Pro's API ID, context window, and output limit are not publicly documented as of 2026-09-08** — preview, Nova Forge customers only.
+- **Whether `reasoningContent` must be replayed across turns is not publicly documented as of 2026-09-08.**
+- **Nova's per-model `allowed_modes` for Bedrock data retention is not publicly documented as of 2026-09-08.**
+- **Context truncation / overflow semantics are not publicly documented as of 2026-09-08.**
+- **Named replacements for the Legacy Nova models are not published** — AWS gives dates only, and there is no Nova 2 image or video generation model at all.
+- Long-context degradation guidance exists only for Nova Premier, not for Nova 2 Lite at 1M.
+- `https://docs.aws.amazon.com/bedrock/latest/userguide/structured-outputs.html` returned a title-only shell on two attempts; the structured-outputs support claim above comes from the per-model cards instead.
+- Explicit parallel-tool-call semantics are not documented for Converse.
+
+---
+
+## AI21 Labs (Jamba)
+
+**Inventory note.** Missing from the provisional inventory; added on the 2026-09-08 sweep.
+
+### Current models
+
+| Model | API ID | Dated snapshot | Parameters | Context | Max output |
+| --- | --- | --- | --- | --- | --- |
+| Jamba Large 1.7 | `jamba-large` | `jamba-large-1.7-2025-07` | 398B total / 94B active | 256K | 4,096 |
+| Jamba Mini 2 | `jamba-mini` | `jamba-mini-2-2026-01` | 52B total / 12B active | 256K | 4,096 |
+| Jamba 3B | **no API endpoint** | — | 3B | 256K | — |
+
+AI21: "We advise using dated versions of the Jamba API to avoid disruptions from model updates and breaking changes." Note the asymmetric versioning — `jamba-mini` has moved to a **2 (2026-01)** snapshot while `jamba-large` still resolves to a **1.7 (2025-07)** one. **There is no Jamba Large 2 on the API as of 2026-09-08.**
+
+Open weights on the AI21 HuggingFace org: `ai21labs/AI21-Jamba-Large-1.7`, `ai21labs/AI21-Jamba-Reasoning-3B` (+ GGUF), and the older 1.6 / Mini-1.7 repos.
+
+**The defining runtime constraint is `max_tokens`: "Maximum 4096 tokens for Jamba models."** Against a 256K input window that is a 64:1 asymmetry, and it is the single most consequential fact for agentic use — long plans, large diffs, and bulk structured extraction do not fit in one response.
+
+### Runtime contract notes
+
+**API surface.** Chat completions at `https://api.ai21.com/studio/v1/chat/completions`. Body: `model`, `messages`, `tools`, `documents`, `response_format`, `max_tokens` (≤ 4096), `temperature` (0.0–2.0, default 0.4), `top_p`, `stop`, `n` (1–16), `stream`. Documented interactions: **`stream` "is incompatible with tools and requires `n=1`"**, and "If `n > 1`, setting `temperature = 0` will fail."
+
+The request/response shape is OpenAI-*like* — `messages`, `tools[].function`, `tool_calls`, `response_format`, `role: "tool"` with `tool_call_id`, `finish_reason`, `usage.prompt_tokens`/`completion_tokens`/`total_tokens`. **But no AI21-owned page states that AI21 offers an OpenAI-compatible endpoint or supports the OpenAI SDKs; that claim is not publicly documented as of 2026-09-08.** (Self-hosting under vLLM does produce an OpenAI-compatible server, but that is vLLM's property, not AI21's API.)
+
+**For agentic work AI21 points at Maestro, not at the Jamba chat API.** Maestro is described as "an advanced AI system for rapidly creating and deploying knowledge agents" that "automate high-value, data-intensive business tasks," with reasoning, validation and self-correction. `POST https://api.ai21.com/studio/v1/maestro/runs` takes `input`, a **required** `system_prompt`, `requirements` (up to 10 named conditions, each with `name`, `description`, `is_mandatory`), `tools`, `models`, `budget` (`"low"`/`"medium"`/`"high"`, default low), `include`, `response_language`. Maestro routes to first-party `jamba-large`/`jamba-mini` **and to third-party models** including Claude, GPT, Gemini, Llama, Mistral and Qwen IDs. **Architecturally this is the key split: the agent-loop features — tools, MCP, requirement validation, budget control — live in Maestro, one layer above the Jamba chat API.**
+
+**Reasoning state.** **There is no reasoning or thinking mode on the Jamba API.** The chat response schema has no reasoning field, `finish_reason` is only `"stop"` or `"length"`, and the request has no reasoning parameter. AI21's prompt-engineering page offers only ordinary prompted chain-of-thought. Reasoning exists in the family solely as a separate open-weights model — **Jamba Reasoning 3B (Apache 2.0, 256K context, trained with "online reinforcement learning with RLVR")** — which is **not exposed on the API**. Replaying reasoning state across turns is therefore a non-question for the hosted API. Maestro's `budget` is the nearest analogue to a reasoning-effort dial, but AI21 does not describe it as reasoning-token control.
+
+**Tools.** OpenAI-shaped `{"type": "function", "function": {"name", "description", "parameters"}}`. "Function calling is available for all Jamba models via the Chat Completions API," and "Functions must be described by the user in the request; **there are no built-in functions**" — so no server-side code interpreter or web search at the Jamba layer. Responses carry `tool_calls[]` with `id`, `type: "function"` (the only current value), and `function.name`/`function.arguments`; results return as `role: "tool"` messages with a matching `tool_call_id`. **Confirmed limitation: streaming is incompatible with tools.** `tool_choice` options, parallel tool-call support, and any tool-count cap are **not publicly documented as of 2026-09-08**.
+
+**MCP is a Maestro capability, not a Jamba chat capability:** "When you define an MCP tool in the `tools` parameter, AI21 Maestro acts as an MCP client," with `type: "mcp"`, `server_label`, `server_url`, optional `headers` and `allowed_tools`, and auth via bearer token, custom-header API key, or OAuth. Hard constraint: "AI21 Maestro supports only remote MCP servers, not local ones."
+
+**Self-hosted parser dependency is real and version-split.** vLLM serving of Jamba 1.6 requires `--enable-auto-tool-choice --tool-call-parser jamba` (with `--quantization="experts_int8" --tensor-parallel-size=8`); **tool calls will not parse without it**. Jamba Reasoning 3B uses a **different** parser — `--enable-auto-tool-choice --tool-call-parser hermes`, on vLLM ≥ 0.11.0 with `--mamba-ssm-cache-dtype float32`. Anyone self-hosting both must configure them separately.
+
+**Structured output.** JSON mode only: `response_format` set to `{"type": "json_object"}`. AI21's own guidance is explicit that **the schema lives in the prompt, not in the API call**: "Use the `response_format=json` API parameter and specify the expected structure in the prompt itself." There is no strict JSON-schema enforcement, no grammar parameter, and no `json_schema` variant. Structural correctness is guaranteed only to the level of "is valid JSON." The nearest thing to schema enforcement in the AI21 stack is Maestro's `requirements` array — validation by checking, not constrained decoding.
+
+**Context behavior.** 256K across Jamba Large 1.7, Jamba Mini 2 and Jamba 3B; AI21 claims "the longest context window (256K tokens) among open models." **Documented degradation lands far earlier than the window suggests:** "When asking the model to process or rewrite very long documents (above 10k tokens), don't submit them in a single pass. The model is likely to compress, summarize, or truncate the content." AI21's own advice is therefore to chunk above ~10K tokens for transformation work — a 25× gap between the advertised window and the advised working size, which together with the 4,096-token output ceiling defines the real operating envelope. Self-hosted, the practical context is lower still: the Jamba Large 1.7 card notes context "220K tokens long on 8 80GB GPUs" with ExpertsInt8 quantization. **Prompt caching is not publicly documented as of 2026-09-08** (no caching field in the chat request, no caching page in the docs index), and neither are overflow/truncation semantics.
+
+**Modality.** Text only across every page fetched — the chat request documents `messages` and `documents` (text with metadata), and there are no image, audio or video content types in the request or response schemas. No speech, realtime/voice, or generated-media models exist in the family. **AI21 never affirmatively states "text-only"; that is inferred from complete schemas, and a positive statement of modality scope is not publicly documented as of 2026-09-08.**
+
+### Deployment & residency
+
+Jamba's differentiator is that it ships as open weights and self-deploys, but **every third-party platform lags AI21's own SaaS, some by two generations**:
+
+| Platform | Managed | Self-deploy | Latest version there |
+| --- | --- | --- | --- |
+| AI21 SaaS | yes | — | 2 |
+| Hugging Face | — | yes | 2 |
+| Kaggle | — | yes | 1.7 |
+| GCP Model Garden | — | yes | 1.6 |
+| Microsoft Azure | — | yes | 1.5 |
+| AWS SageMaker | — | yes | 1.5 |
+| AWS Bedrock | yes | — | 1.5 |
+
+Self-hosting: vLLM "version `v0.6.5` to `v0.8.5.post1`" for Jamba 1.6 (Docker `vllm/vllm-openai:v0.8.5.post1`), `--tensor-parallel-size=8`; Jamba Mini ≈ 96.07 GB (~55 GB quantized), Jamba Large ≈ 743 GB (~400 GB quantized). The self-deployment guide documents 1.6 model IDs while the API line is at 1.7/2 — the self-host docs trail the hosted models.
+
+**Licensing splits by model and is easy to get wrong:** Jamba Large 1.7 is under the **Jamba Open Model License** ("a permissive license allowing full research use and commercial use under the license terms"), while **Jamba2 (3B and Mini) and Jamba Reasoning 3B are Apache 2.0**. A blanket "Jamba is Apache 2.0" claim is false for the Large line.
+
+On Bedrock, Jamba is Legacy and stranded: `ai21.jamba-1-5-large-v1:0` and `ai21.jamba-1-5-mini-v1:0`, us-east-1 only, Legacy 2026-05-26, **EOL 2026-11-26**, with public extended access (higher pricing) already begun 2026-08-26. **Bedrock never carried 1.6 or 1.7, so there is no in-place upgrade — the only forward path is off-platform, to AI21 SaaS or self-hosting.**
+
+**AI21's data-retention and training-use posture for customer prompts is not publicly documented as of 2026-09-08** on the pages fetched; `docs.ai21.com/docs/training-data-1` covers pretraining corpus composition only. No VPC, on-prem, or air-gapped deployment claim appeared on the AI21-owned pages returned.
+
+### Retired
+
+| Model | Snapshot | Deprecated API ID | Deprecation date |
+| --- | --- | --- | --- |
+| Jamba Mini 1.7 | 2025-07 | `jamba-mini-1.7-2025-08` | 2026-02-01 |
+| Jamba Large 1.6 | 2025-03 | `jamba-large-1.6-2025-03` | 2025-08-03 |
+| Jamba Mini 1.6 | 2025-03 | `jamba-mini-1.6-2025-03` | 2025-08-03 |
+| Jamba Large 1.5 | 2024-08 | `jamba-large-1.5-2024-08` | 2025-05-06 |
+| Jamba Mini 1.5 | 2024-08 | `jamba-mini-1.5-2024-08` | 2025-05-06 |
+
+**AI21 names no replacement for any deprecated ID** — the table carries dates only. The successor is inferable from the moving alias (`jamba-mini` now resolves to `jamba-mini-2-2026-01`) but is never stated as a migration mapping. One non-model deprecation: the `tool_resources` parameter on `POST /studio/v1/maestro/runs` was deprecated 2025-09-18 and replaced by `tools`.
+
+### Primary sources
+
+- [Jamba foundation models](https://docs.ai21.com/docs/jamba-foundation-models)
+- [Function calling](https://docs.ai21.com/docs/function-calling)
+- [Self-deployment](https://docs.ai21.com/docs/self-deployment)
+- [User-provided tools and MCP](https://docs.ai21.com/docs/user-provided-tools-mcp)
+- [Model availability across platforms](https://docs.ai21.com/docs/model-availability-across-platforms)
+- [Prompt engineering](https://docs.ai21.com/docs/prompt-engineering)
+- [Jamba chat API reference](https://docs.ai21.com/reference/jamba-1-6-api-ref)
+- [Jamba API response reference](https://docs.ai21.com/reference/jamba-api-response)
+- [Maestro create run](https://docs.ai21.com/reference/maestro-create-run)
+- [AI21 changelog](https://docs.ai21.com/changelog)
+- [Introducing Jamba2](https://www.ai21.com/blog/introducing-jamba2/)
+- [Jamba](https://www.ai21.com/jamba/)
+- [AI21-Jamba-Large-1.7 model card](https://huggingface.co/ai21labs/AI21-Jamba-Large-1.7)
+- [AI21-Jamba-Reasoning-3B model card](https://huggingface.co/ai21labs/AI21-Jamba-Reasoning-3B)
+
+### Sourcing gaps
+
+- **An explicit OpenAI-compatibility claim for the AI21 API is not publicly documented as of 2026-09-08** — the shape matches, the claim does not exist.
+- **`tool_choice` options, parallel tool-call support, and tool-count limits are not publicly documented as of 2026-09-08.**
+- **Prompt caching is not publicly documented as of 2026-09-08.**
+- **Context truncation semantics on overflow are not publicly documented as of 2026-09-08.**
+- **Customer data-retention and training-use posture is not publicly documented as of 2026-09-08.**
+- **An affirmative statement of text-only modality is not publicly documented as of 2026-09-08** (inferred from complete request/response schemas).
+- **Jamba Reasoning 3B's thinking-mode toggle, special tokens, or chat-template kwargs are not publicly documented as of 2026-09-08.**
+- **Whether a Jamba Large 2 exists or is planned is not publicly documented as of 2026-09-08.**
+- Named replacements for deprecated Jamba snapshots are not published — dates only.
+
+---
+
+## Nvidia Nemotron
+
+**Inventory note.** Missing from the provisional inventory; added on the 2026-09-08 sweep. Nemotron reaches production three ways at once — hosted NIM catalog, self-hosted NIM container, and raw HuggingFace weights — and the model ID differs in each, which is part of why a vendor-name grep missed it.
+
+### Current models
+
+Current generation is **Nemotron 3 / 3.5**, published on the `nvidia` HuggingFace org with precision-suffixed repos. Representative exact strings:
+
+| Line | HuggingFace repos | Hosted NIM catalog ID |
+| --- | --- | --- |
+| Ultra | `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16` / `-NVFP4` / `-Base-BF16` / `-GenRM` | `nemotron-3-ultra-550b-a55b` |
+| Super | `nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16` / `-NVFP4` / `-FP8` / `-Base-BF16` | `nemotron-3-super-120b-a12b` (API string `nvidia/nemotron-3-super`) |
+| Nano | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16` / `-FP8` / `-NVFP4` / `-Base-BF16`; `nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16` / `-FP8` / `-GGUF` | — |
+| Nano Omni (multimodal) | `nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16` / `-FP8` / `-NVFP4` | `nemotron-3-nano-omni-30b-a3b-reasoning` |
+| 3.5 Lightning | `nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4` / `-DSpark` / `-DFlash` / `-BF16` / `-Base-BF16` | `nemotron-3.5-lightning-30b-a3b` |
+
+Also in the catalog: `nemotron-3-embed-1b`, `nemotron-3.5-content-safety`, plus non-LLM `nemotron-ocr-v1`/`v2`, `nemotron-parse`, `nemotron-asr-streaming`, `nemotron-voicechat`, page/table/graphic element models, `llama-nemotron-embed-vl-1b-v2`, `llama-nemotron-rerank-vl-1b-v2`, and the `llama-3_1-nemoguard-*` / `nemotron-safety-guard` families. Reward models `nvidia/Qwen3-Nemotron-235B-A22B-GenRM` and `-GenRM-2603` and five `nvidia/NVIDIA-Nemotron-Labs-Teacher-*` repos round out the org.
+
+**Context is the fact most likely to be misquoted.** The Super build page states **1,048,576 tokens (1M)**, and `developer.nvidia.com` markets 1M for the family. The Ultra NIM day-0 guide is more precise: **natively 262,144 tokens (256K)**, extensible to 1M only via `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` plus an explicit `--max-model-len`. The Nano card says 1M max with a **256K default in the HF config**, and the Nano Omni card says **256K max**. **Treat 1M as a family marketing figure and 256K as the per-model runtime default** unless the specific repo's config says otherwise.
+
+Max output has no family-wide ceiling: the Nano Omni card gives **20,480 tokens in thinking mode and 1,024 in instruct mode**; Super examples use `max_tokens=16000`.
+
+### Runtime contract notes
+
+**API surface — unusually broad.** A NIM container exposes OpenAI-compatible `/v1/chat/completions`, `/v1/completions`, **and `/v1/responses`**, plus **Anthropic-compatible `/v1/messages` and `/v1/messages/count_tokens`** — the Anthropic surface supports `tool_use`/`tool_result` blocks, a top-level `system` field, `thinking` content blocks, and SSE streaming with `message_start` / `content_block_delta` / `message_delta` / `message_stop`. Also documented: `/tokenize`, `/detokenize`, `POST /inference/v1/generate` (disaggregated, vLLM 0.11.1+), `POST /generative_scoring` (vLLM 0.20.0+), and health/metrics/version/manifest/license endpoints. Hosted catalog base URL is `https://integrate.api.nvidia.com/v1`. **A harness written against either the OpenAI or the Anthropic wire format can target Nemotron without an adapter** — rare, and worth knowing when Nemotron is a fallback or an in-boundary substitute.
+
+**Reasoning state.** An explicit toggle, not a separate checkpoint: `"chat_template_kwargs": {"enable_thinking": true|false}`. **The server must be started with `--reasoning-parser nemotron_v3`** (Super's advanced guide additionally documents a `super_v3` parser loaded via `--reasoning-parser-plugin super_v3_reasoning_parser.py --reasoning-parser super_v3`). Budget controls exist at three names: `thinking_token_budget`, `reasoning_budget` (Nano Omni: 16384 with `grace_period` 1024), and `low_effort: True` on Super. **Nano Omni notes that reasoning traces land in the `content` field by default unless the reasoning parser strips them** — a self-hosting misconfiguration that silently leaks thinking into user-visible output. **Whether reasoning must be replayed across turns is not publicly documented as of 2026-09-08.**
+
+**Tools.** OpenAI function-calling schema, `tool_choice` supporting `none`/`auto`/named. The self-hosting requirement is the finding: **`--enable-auto-tool-choice --tool-call-parser qwen3_coder`** — **Nemotron 3 borrows the Qwen3-Coder tool parser**, so an operator who reasons by family name and looks for a `nemotron` parser will not find one and tool calls will not parse. Nano Omni additionally requires **`trust_remote_code=True`** for its custom chat template. MTP (multi-token prediction) is claimed to give 2–3× speedup on structured generation including tool calls. **Parallel tool calls, tool-ID semantics, and MCP support are not publicly documented as of 2026-09-08.**
+
+**Structured output — a real grammar path, with a stated preference.** `response_format={"type":"json_object"}` works but, in NVIDIA's own words, "permits the model to produce any valid JSON, including empty objects." NVIDIA recommends **`guided_json` inside the `nvext` extension via `extra_body`**, backed by **`xgrammar`** (falling back to `outlines`). Also available: `guided_regex`, `guided_grammar` (EBNF), and `guided_choice`. This is strict, grammar-level constraint rather than JSON mode, and it is a genuine reason to reach for Nemotron when output shape must be guaranteed on infrastructure you control.
+
+**Context behavior.** 1M claimed for the family via a Mamba-2 hybrid backbone with linear-time processing; per-model native is 256K as above. `--kv-cache-dtype fp8` is documented as a serving flag; **no prompt-caching product feature is documented**. Serving caveat with teeth: **the Mamba-2 SSM state cache requires float32 for all checkpoint precisions.** NVIDIA's scaffolding page names two agent failure modes by name — **"goal drift"** (the agent loses alignment as context accumulates) and **"tool-call failures"** (malformed or hallucinated function calls breaking execution loops) — and positions the long window as the mitigation.
+
+**Modality.** Ultra, Super, Nano and Lightning are **text in / text out only**. `Nemotron-3-Nano-Omni-30B-A3B-Reasoning` takes **video, audio, image and text in, text out only**. Speech, OCR, parsing and VL embedding/reranking are separate catalog models (`nemotron-asr-streaming`, `nemotron-voicechat`, `nemotron-ocr-*`, `nemotron-parse`, `llama-nemotron-embed-vl-1b-v2`, `llama-nemotron-rerank-vl-1b-v2`) — not modes of the chat models.
+
+**Agent scaffolding.** NVIDIA's own open-scaffolding page points at OpenCode, OpenClaw, and Kilo Code CLI (all via OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`) and OpenHands CLI against `build.nvidia.com`.
+
+### Deployment & residency
+
+- **Both hosted and weights.** Hosted: NIM microservices (e.g. `nvcr.io/nim/nvidia/nemotron-3-ultra-550b-a55b:2.0.5-variant`), `build.nvidia.com`, and OpenRouter. Weights: HuggingFace, runnable on vLLM (0.17.1 cited), SGLang, TensorRT-LLM (1.3.0rc5), Ollama, and llama.cpp. **On-prem is fully supported — that is the point of NIM**, which makes Nemotron a serious candidate for a residency-constrained deployment.
+- **Licensing is inconsistent across the family and must be checked per repo.** Super and Nano cards say **NVIDIA Nemotron Open Model License**; Nano Omni says **NVIDIA Open Model Agreement**; 3.5 Lightning NVFP4 says **OpenMDW-1.1**. Do not assume one license covers the family.
+- **Data residency for the hosted `integrate.api.nvidia.com` endpoint is not publicly documented as of 2026-09-08.** Self-hosted NIM residency is whatever your infrastructure is.
+
+### Retired
+
+The only first-party EOL notice reached: **NVIDIA NIM Llama-3.1-70b-instruct → NVIDIA NIM Llama-3.3-70b-instruct**, EOL July 2026, final supported version 1.10. **No deprecation notice exists for any Nemotron 3 LLM ID.** Retriever/reranker rebrands (`llama-3.2-nemoretriever-300m-embed-v2` → `llama-nemotron-embed-300m-v2` and similar) appeared only in search snippets with no fetchable first-party page and are **recorded as unverified**.
+
+### Primary sources
+
+- [NVIDIA Nemotron](https://developer.nvidia.com/nemotron)
+- [NVIDIA API catalog — models](https://build.nvidia.com/models)
+- [Nemotron 3 Super 120B on build.nvidia.com](https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b)
+- [Nemotron v3 collection](https://huggingface.co/collections/nvidia/nvidia-nemotron-v3)
+- [Nemotron 3 Super 120B FP8 model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8)
+- [Nemotron 3 Nano 30B BF16 model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
+- [Nemotron 3.5 Lightning 30B NVFP4 model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4)
+- [Nemotron 3 Nano Omni model card](https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16)
+- [NIM day-0 guide: Nemotron 3 Ultra](https://docs.nvidia.com/nim/large-language-models/2.0.6/day-0/get-started-nemotron-3-ultra.html)
+- [NIM LLM API reference](https://docs.nvidia.com/nim/large-language-models/latest/reference/api-reference.html)
+- [NIM structured generation](https://docs.nvidia.com/nim/large-language-models/1.13.0/structured-generation.html)
+- [Nemotron 3 Super advanced deployment guide](https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.html)
+- [Nemotron 3 Super open scaffolding resources](https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.html)
+- [NVIDIA AI Enterprise EOL notices](https://docs.nvidia.com/ai-enterprise/lifecycle/latest/eol-notices.html)
+
+### Sourcing gaps
+
+- **Parallel tool-call support and tool-call ID semantics are not publicly documented as of 2026-09-08.**
+- **Whether reasoning traces must be replayed across turns is not publicly documented as of 2026-09-08.**
+- **MCP support is not documented** on the Nemotron scaffolding or NIM pages.
+- **Prompt caching is not publicly documented as of 2026-09-08** (only the `--kv-cache-dtype fp8` serving flag).
+- **Data residency for `integrate.api.nvidia.com` is not publicly documented as of 2026-09-08.**
+- Pages that returned an empty body and could not be read: `docs.nvidia.com/nemotron/nightly/usage-cookbook/Nemotron-3-Ultra-Base/README.html`, `docs.nvidia.com/nim/large-language-models/latest/function-calling.html`, and the `latest` structured-generation page (the pinned `1.13.0` URL worked and is cited instead). The Ultra NVFP4 model card exceeded the fetch size limit.
+
+---
+
+## Ai2 OLMo
+
+**Inventory note.** Missing from the provisional inventory; added on the 2026-09-08 sweep.
+
+**Tooling warning for the next refresh.** The live documentation host is **`docs.allenai.org`** (`allenai.org/documentation` 302-redirects there); `docs.allen.ai` is not it. More importantly, **`docs.allenai.org` is a client-rendered SPA — a plain fetch of any subpage, including `.md` variants and `llms-full.txt`, returns the site's intro shell rather than the page.** Five of the eleven sources below required a real browser. Anyone re-verifying with a fetch-only tool will wrongly conclude Ai2 documents nothing.
+
+### Current models
+
+`allenai/Olmo-3.1-32B-Instruct`, `allenai/Olmo-3.1-32B-Think`, `allenai/Olmo-3-7B-Instruct`, `allenai/Olmo-3-7B-Think`, plus bases `allenai/Olmo-3-1125-32B` and `allenai/Olmo-3-1025-7B`. Ai2 splits the roles explicitly: **Instruct** is "optimized for helpfulness, following complex instructions, and function calling"; **Think** is "optimized for reasoning capabilities, math, code, and precise instruction following." The blog also names Olmo 3-RL Zero 7B and a December refresh (Olmo 3.1 Think 32B, Olmo 3.1 Instruct 32B, Olmo 3.1 RL Zero 7B Code and Math).
+
+**Context: 65,536 tokens, and it is extrapolated rather than natively trained.** The blog claims "~up to 65K tokens"; the `config.json` for `Olmo-3.1-32B-Instruct` confirms `max_position_embeddings: 65536` reached via **YaRN** (`rope_type: "yarn"`, `factor: 8.0`, `original_max_position_embeddings: 8192`, `rope_theta: 500000`, `beta_fast: 32`, `beta_slow: 1`), architecture `Olmo3ForCausalLM`, vocab 100278. **A YaRN factor of 8 over an 8K base is a material caveat for long-context agent work.** Max output is **not publicly documented as of 2026-09-08**.
+
+### Runtime contract notes
+
+**API surface — the structural fact.** **Ai2 operates no first-party inference API.** Its own quickstart routes to three third parties, all OpenAI-compatible, and **all three use different model ID conventions for the same weights**:
+
+| Provider | Base URL | Model string |
+| --- | --- | --- |
+| OpenRouter | `https://openrouter.ai/api/v1` | `allenai/olmo-3-32b-think` |
+| Cirrascale ("Ai2 Endpoints") | `https://ai2endpoints.cirrascale.ai/api` | `OLMo-2-0325-32B-Instruct` (model list at `GET /api/models`) |
+| Parasail | `https://api.parasail.io/v1` | `Olmo-3-32B-Think` |
+
+Self-hosting is the first-class path: `vllm serve "allenai/Olmo-3.1-32B-Instruct"` yields an OpenAI-compatible `/v1/chat/completions`. **Consequence for an audit: an OLMo model string in code says nothing about who is serving it, where, or under whose retention policy — that has to be traced separately.**
+
+**Reasoning state.** Think variants emit reasoning inside **`<think>…</think>`** within the assistant turn, using a ChatML-style template (`<|im_start|>assistant\n<think>…</think>\n…<|im_end|>`). **There is no `enable_thinking`-style toggle — Think and Instruct are separate checkpoints, so reasoning is a model-selection decision, not a request parameter.** Whether traces should be stripped or replayed across turns is **not publicly documented as of 2026-09-08**.
+
+**Tools.** Documented and specific. Serving requires **`vllm>=0.11.1`** and a dedicated parser:
+
+```
+vllm serve allenai/Olmo-3-7B-Instruct --enable-auto-tool-choice --tool-call-parser olmo3
+```
+
+Standard OpenAI `tools` array schema. **Ai2 explicitly documents MCP**: "Olmo-3-Instruct models are also optimized for use with MCP servers," with a worked OpenAI Agents SDK + `MCPServerStdio` + `mcp-server-fetch` example routed through LiteLLM as `hosted_vllm/allenai/Olmo-3-7B-Instruct`. **Note the docs attribute tool calling to Instruct only — the Think 32B model card mentions no tool calling.** Parallel calls and tool-ID semantics are not documented.
+
+**Structured output.** **Not publicly documented as of 2026-09-08.** Anything available comes from vLLM's own guided-decoding stack, not from Ai2, and is therefore a property of the serving layer rather than the model contract.
+
+**Modality.** **Text only.** Multimodal is a separate Ai2 family (**Molmo**) and speech is another (**OLMoASR**) — do not conflate them into an OLMo profile.
+
+**Context behavior.** 65,536 via YaRN as above. There is no caching feature because there is no hosted API to cache in. The blog's only long-context statement is a positive one — Base "maintains performance at extended context lengths (~up to 65K tokens)," citing RULER — not a degradation disclosure. Note that the deployment guide's Modal example pins `max_model_len=4096` for an **Olmo 2** model; that is stale sample code, not an Olmo 3 limit.
+
+### Deployment & residency
+
+- **Weights-only, Apache 2.0** (stated on both the 32B-Instruct and 32B-Think cards), with Ai2's Responsible Use Guidelines referenced as intent rather than a license restriction. Ai2's docs claim "permissive commercial licensing: unrestricted commercial use."
+- First-party deployment guides exist for **Google Vertex AI** (including Model Garden one-click, `model_garden.OpenModel("allenai/olmo-2-1124-7b")`) and **Modal.com** with vLLM.
+- **Residency is entirely yours when self-hosting** — which, together with Apache 2.0, is the main reason a residency-constrained system would pick OLMo. If instead you route through Cirrascale, Parasail, or OpenRouter, residency is theirs and **Ai2 documents nothing about it**.
+
+### Retired
+
+**No deprecation policy and no retirement notices.** The release-notes page documents the lineage (Olmo Feb 2024 → Olmo 7B April 2024 → Olmo July 2024 → OlmoE Sept 2024 → Olmo 2 Nov 2024 → Olmo 2 32B Mar 2025 → Olmo 2 1B May 2025) and a naming-convention change (`model name, version, parameters, month-year`; "Olmo v1.7 is now Olmo April 2024"), but **stops at May 2025 and contains no Olmo 3 entries** — it is stale relative to the rest of the site. The practical migration signal is provider-side: Cirrascale's own sample still ships `OLMo-2-0325-32B-Instruct` while Parasail and OpenRouter ship Olmo 3, so **provider availability lags the model line and a "current" OLMo endpoint may be a generation behind**.
+
+### Primary sources
+
+- [OLMo](https://allenai.org/olmo)
+- [OLMo 3 blog](https://allenai.org/blog/olmo3)
+- [Ai2 docs index (llms.txt)](https://docs.allenai.org/llms.txt)
+- [Quick start — APIs](https://docs.allenai.org/quick_start/apis)
+- [Quick start — deployment](https://docs.allenai.org/quick_start/deployment)
+- [Models — OLMo](https://docs.allenai.org/models/olmo)
+- [OLMo release notes](https://docs.allenai.org/release_notes/olmo-release-notes)
+- [Latest releases](https://docs.allenai.org/latest-releases)
+- [Olmo-3.1-32B-Instruct model card](https://huggingface.co/allenai/Olmo-3.1-32B-Instruct)
+- [Olmo-3.1-32B-Think model card](https://huggingface.co/allenai/Olmo-3.1-32B-Think)
+- [Olmo-3.1-32B-Instruct config.json](https://huggingface.co/allenai/Olmo-3.1-32B-Instruct/raw/main/config.json)
+
+### Sourcing gaps
+
+- **Max output tokens are not publicly documented as of 2026-09-08.**
+- **A structured-output path is not publicly documented as of 2026-09-08** — Ai2 documents none; anything available belongs to the serving stack.
+- **Whether `<think>` traces should be replayed or stripped across turns is not publicly documented as of 2026-09-08.**
+- **Parallel tool calls, tool-ID semantics, and prompt caching are not publicly documented as of 2026-09-08.**
+- **No deprecation policy exists**, and the release-notes page is itself stale (stops at May 2025).
+- `https://platform-docs-beta.apps.allenai.org/quick_start/deployment` refused the connection.
+
+---
+
+## Sweep candidates evaluated and NOT added
+
+Recorded so the next maintainer does not re-litigate them.
+
+### Reka AI — SKIP
+
+**Link bar: passed (16 fetchable first-party URLs).** **Substance bar: failed.**
+
+Reka's docs are well organized, and the family is real: `reka-flash` and `reka-edge` (alias `reka-edge-2603`) are the only always-available API IDs, the pricing page names a third tier (Reka Core) **for which no API ID string is published anywhere**, and open weights exist at `RekaAI/reka-flash-3.1` (Apache 2.0, 21B) and `RekaAI/reka-edge-2603` (a bespoke `reka-edge-2603-license`, not an OSI license, 7B). The API is a single OpenAI-compatible endpoint at `https://api.reka.ai/v1/chat/completions`. Modality is the family's genuine strength — chat accepts `text`, `image_url`, `video_url`, `audio_url` **and `pdf_url`** content parts, with a documented "performs best with videos shorter than 30 seconds."
+
+It fails on runtime substance in ways that are disqualifying for this brief specifically:
+
+- **No context window is published for any hosted model** — not on the models page, pricing page, API reference, or FAQ. The only number anywhere is a `-c 2048` sample flag in a `llama-server` invocation on a model card. **You cannot size an agent loop against a model whose window is undocumented.**
+- **Only one model can call tools.** Reka's own words: "Currently, only Reka Flash supports function calling. We are working hard to quickly enable support for our other classes of models."
+- **No reasoning mode exists on the API.** The full documented parameter list is `messages`, `model`, `frequency_penalty`, `max_tokens` (default 1024), `presence_penalty`, `seed`, `stop`, `stream`, `temperature`, `tool_choice`, `tools`, `top_k`, `top_p` — no `reasoning`, no thinking toggle. The `reka-edge-2603` card is explicit: "the model does not currently support reasoning."
+- **No structured-output path at all** — there is no `response_format` parameter. The only documented technique is assistant prefill, which is prompt steering, not a schema guarantee.
+- **No deprecation policy, no retirement notices, no migration targets.**
+
+Five of the eleven required profile headings would read "not publicly documented," and a sixth (harness requirements) would reduce to "self-hosting `reka-edge-2603` needs a custom `vllm-reka` plugin, since stock vLLM will not serve it." **That is five headings of absence — exactly the padding the design's three-link/substance bar exists to prevent.** Same disposition as Microsoft Phi, for the same reason.
+
+**Reconsider when** either (a) context windows and a `response_format`/schema parameter appear in the chat API reference, or (b) function calling ships beyond Reka Flash. Noted separately for a future pass: **Reka Vision and its MCP server** (`uvx reka-mcp`, ~18 tools, aimed at coding agents) are materially better documented than Reka Chat, and would survive the sourcing bar as a video-understanding *tool* entry rather than as a model-family profile.
+
+Sources consulted (not cited elsewhere in this brief, listed for the next maintainer): `docs.reka.ai/overview`, `/quickstart`, `/pricing`, `/llms.txt`, `/chat/overview`, `/chat/models`, `/chat/function-calling`, `/chat/chat-with-image-video-and-audio`, `/chat/api-reference/create`, `/vision/mcp-server`, `/resources/faqs`; `reka.ai/`; `reka.ai/news/reka-edge-frontier-level-edge-intelligence-for-physical-ai`; `huggingface.co/RekaAI`, `/RekaAI/reka-edge-2603`, `/RekaAI/reka-flash-3.1`. `reka.ai/rekalabs` returns HTTP 404.
+
+### Microsoft Phi — SKIP (decision unchanged)
+
+Already evaluated and rejected in the original reconciliation above: no tool-calling documentation on the current model card, no structured-output path, no parser flags, no deprecation policy, and only **2** reachable primary links — below the three-link bar. There is also no Phi-5, despite third-party claims. **That decision stands; this sweep did not revisit it.**
+
+---
+
 ## Sources
 
 Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs sites, API references, changelogs, release blogs, model cards on the vendor's own HuggingFace org, or repos under the vendor's own GitHub org. No aggregator, leaderboard, or news source is cited anywhere in this document.
@@ -1396,6 +1944,8 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
 - https://ai.google.dev/gemini-api/terms
 - https://ai.meta.com/blog/
+- https://allenai.org/blog/olmo3
+- https://allenai.org/olmo
 - https://api-docs.deepseek.com/api/create-chat-completion
 - https://api-docs.deepseek.com/guides/anthropic_api
 - https://api-docs.deepseek.com/guides/json_mode
@@ -1408,7 +1958,11 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://api-docs.deepseek.com/quick_start/pricing
 - https://api-docs.deepseek.com/updates
 - https://api.ncloud-docs.com/docs/en/clovastudio-chatcompletionsv3
+- https://aws.amazon.com/about-aws/whats-new/2025/12/nova-2-foundation-models-amazon-bedrock/
+- https://aws.amazon.com/nova/models/
 - https://blog.modelcontextprotocol.io/posts/2026-07-28/
+- https://build.nvidia.com/models
+- https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b
 - https://clova.ai/en/hyperclova
 - https://console.upstage.ai/api/docs/for-agents/raw
 - https://console.upstage.ai/docs/models/history.md
@@ -1417,12 +1971,48 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://developer.meta.com/ai/docs/model-cards-and-prompt-formats/llama4/
 - https://developer.meta.com/ai/docs/overview/
 - https://developer.meta.com/ai/llama4/license/
+- https://developer.nvidia.com/nemotron
 - https://developers.openai.com/api/docs/deprecations
 - https://developers.openai.com/api/docs/guides/migrate-to-responses
 - https://developers.openai.com/api/docs/guides/reasoning
 - https://developers.openai.com/api/docs/guides/tools
 - https://developers.openai.com/api/docs/guides/your-data
 - https://developers.openai.com/api/docs/models
+- https://docs.ai21.com/changelog
+- https://docs.ai21.com/docs/function-calling
+- https://docs.ai21.com/docs/jamba-foundation-models
+- https://docs.ai21.com/docs/model-availability-across-platforms
+- https://docs.ai21.com/docs/prompt-engineering
+- https://docs.ai21.com/docs/self-deployment
+- https://docs.ai21.com/docs/user-provided-tools-mcp
+- https://docs.ai21.com/reference/jamba-1-6-api-ref
+- https://docs.ai21.com/reference/jamba-api-response
+- https://docs.ai21.com/reference/maestro-create-run
+- https://docs.allenai.org/latest-releases
+- https://docs.allenai.org/llms.txt
+- https://docs.allenai.org/models/olmo
+- https://docs.allenai.org/quick_start/apis
+- https://docs.allenai.org/quick_start/deployment
+- https://docs.allenai.org/release_notes/olmo-release-notes
+- https://docs.aws.amazon.com/bedrock/latest/userguide/apis.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-amazon-nova-multimodal-embeddings.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-2-lite.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-2-sonic.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-lite.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-micro.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-premier.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-pro.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards-amazon.html
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-lifecycle.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/extended-thinking.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/getting-started-console.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/reasoning-capabilities.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/using-tools.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/what-is-nova-2.html
+- https://docs.aws.amazon.com/nova/latest/nova2-userguide/whats-new.html
+- https://docs.aws.amazon.com/nova/latest/userguide/prompting-long-context.html
 - https://docs.bigmodel.cn/cn/guide/start/model-overview
 - https://docs.cohere.com/changelog/command-a-plus-05-2026
 - https://docs.cohere.com/docs/cohere-works-everywhere
@@ -1439,6 +2029,12 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://docs.mistral.ai/models
 - https://docs.mistral.ai/models/deployment/local-deployment/vllm
 - https://docs.mistral.ai/models/model-cards/mistral-large-3-25-12
+- https://docs.nvidia.com/ai-enterprise/lifecycle/latest/eol-notices.html
+- https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/AdvancedDeploymentGuide/README.html
+- https://docs.nvidia.com/nemotron/latest/usage-cookbook/Nemotron-3-Super/OpenScaffoldingResources/README.html
+- https://docs.nvidia.com/nim/large-language-models/1.13.0/structured-generation.html
+- https://docs.nvidia.com/nim/large-language-models/2.0.6/day-0/get-started-nemotron-3-ultra.html
+- https://docs.nvidia.com/nim/large-language-models/latest/reference/api-reference.html
 - https://docs.qwencloud.com/
 - https://docs.qwencloud.com/changelog/model-deprecation
 - https://docs.qwencloud.com/changelog/model-deprecations/historical-mainline-models
@@ -1458,6 +2054,29 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://docs.sea-lion.ai/models/sea-lion-v4.5.md
 - https://docs.sea-lion.ai/models/sea-lion-v4.5/gemma-sea-lion-v4.5.md
 - https://docs.sea-lion.ai/models/sea-lion-v4.5/qwen-sea-lion-v4.5.md
+- https://docs.x.ai/build/overview
+- https://docs.x.ai/developers/advanced-api-usage/context-compaction
+- https://docs.x.ai/developers/advanced-api-usage/prompt-caching
+- https://docs.x.ai/developers/community/google-cloud-vertex-ai
+- https://docs.x.ai/developers/community/microsoft-foundry
+- https://docs.x.ai/developers/faq/security
+- https://docs.x.ai/developers/grok-4-6
+- https://docs.x.ai/developers/migration/may-15-retirement
+- https://docs.x.ai/developers/model-capabilities/audio/voice
+- https://docs.x.ai/developers/model-capabilities/imagine
+- https://docs.x.ai/developers/model-capabilities/legacy/chat-completions
+- https://docs.x.ai/developers/model-capabilities/text/comparison
+- https://docs.x.ai/developers/model-capabilities/text/generate-text
+- https://docs.x.ai/developers/model-capabilities/text/multi-agent
+- https://docs.x.ai/developers/model-capabilities/text/reasoning
+- https://docs.x.ai/developers/model-capabilities/text/structured-outputs
+- https://docs.x.ai/developers/models
+- https://docs.x.ai/developers/release-notes
+- https://docs.x.ai/developers/tools/advanced-usage
+- https://docs.x.ai/developers/tools/function-calling
+- https://docs.x.ai/developers/tools/overview
+- https://docs.x.ai/developers/tools/remote-mcp
+- https://docs.x.ai/developers/tools/tool-usage-details
 - https://docs.z.ai/api-reference/llm/chat-completion
 - https://docs.z.ai/devpack/tool/claude
 - https://docs.z.ai/guides/capabilities/cache
@@ -1490,7 +2109,13 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://huggingface.co/Qwen/Qwen3.6-35B-A3B
 - https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B
 - https://huggingface.co/Qwen/Qwen3.8-27B
+- https://huggingface.co/ai21labs/AI21-Jamba-Large-1.7
+- https://huggingface.co/ai21labs/AI21-Jamba-Reasoning-3B
 - https://huggingface.co/aisingapore
+- https://huggingface.co/allenai/Olmo-3.1-32B-Instruct
+- https://huggingface.co/allenai/Olmo-3.1-32B-Instruct/raw/main/config.json
+- https://huggingface.co/allenai/Olmo-3.1-32B-Think
+- https://huggingface.co/collections/nvidia/nvidia-nemotron-v3
 - https://huggingface.co/deepseek-ai
 - https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash
 - https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro
@@ -1510,6 +2135,10 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://huggingface.co/moonshotai/Kimi-K3
 - https://huggingface.co/naver-hyperclovax
 - https://huggingface.co/naver-hyperclovax/HyperCLOVAX-SEED-Think-32B
+- https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+- https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8
+- https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+- https://huggingface.co/nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16
 - https://huggingface.co/openai
 - https://huggingface.co/openai/gpt-oss-120b
 - https://huggingface.co/openai/gpt-oss-20b
@@ -1565,6 +2194,8 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://qwen.readthedocs.io/en/latest/framework/function_call.html
 - https://research.meta.ai/blog/introducing-muse-spark-1-3
 - https://sea-lion.ai/
+- https://www.ai21.com/blog/introducing-jamba2/
+- https://www.ai21.com/jamba/
 - https://www.gov-ncloud.com/product/aiService/clovaStudio
 - https://www.ibm.com/granite
 - https://www.ibm.com/granite/docs/models/granite4-2
@@ -1572,3 +2203,4 @@ Every URL cited in this brief, deduplicated. All are provider-owned: vendor docs
 - https://www.ncloud.com/product/aiService/clovaStudio
 - https://www.qwencloud.com/
 - https://www.upstage.ai/blog/en/solar-pro-4
+- https://x.ai/news/grok-4-6
