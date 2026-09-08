@@ -55,6 +55,18 @@ The protocol's extension mechanism (an opt-in, negotiated capability beyond the 
 
 **What to look for:** Extension capabilities negotiated and acted on with no separate approval, pinning, or integrity check distinct from whatever check (if any) applies to ordinary tool definitions. Rendered or executed extension content (inline UI elements, workflow instructions, task-handle payloads) treated as trusted display/execution surface rather than being subject to the same untrusted-until-verified posture as tool annotations (cross-reference 1.4). An extension from an unverified or dynamically-discovered server accepted without the same integrity-hash-at-approval-time discipline applied to tool descriptions. The fix: extend whatever verification gate exists for tool definitions to cover extension capabilities explicitly — do not assume "it's part of the protocol" means "it's safe."
 
+### 1.9 Third-Party MCP Servers Assumed Authenticated and Shell-Free
+
+An MCP server the system connects to is integrated without independently establishing two things: that the server requires authentication at all, and whether anything in its advertised tool list runs raw shell or command execution with no capability restriction. The integration is treated as a normal dependency — added, configured, and trusted — because nothing about it looked alarming.
+
+The base rate says start from the opposite assumption. The largest published dynamic behavioral assessment of internet-discoverable MCP servers found that 91.8% of the servers it actively audited had no OAuth authentication, and counted 687 tool instances across confirmed servers exposing shell execution with no access control. Missing authentication and unrestricted command execution are the common case in that population, not the exceptional one. So they are not edge cases to note in passing — they are the defaults an auditor should check for on every MCP integration, and their absence from a report usually means nobody looked.
+
+**Scope this correctly.** That measurement covers *internet-discoverable* servers reached through public discovery sources, and is a point-in-time snapshot of a fast-moving ecosystem, not a property of the protocol. It says nothing directly about a privately deployed or enterprise-internal server. Use it to set the prior you audit with, not as the verdict on any particular server.
+
+**The churn half.** In the same measurement, 41.6% of confirmed servers disappeared within three days between runs — deploy cycles fast enough that the thing reviewed and the thing running are frequently not the same artifact. A one-time security review of an MCP server dependency is therefore stale almost immediately. The recommendation is a re-scanning cadence tied to the dependency, not a point-in-time sign-off recorded once and inherited forever.
+
+**What to look for:** MCP client configuration listing remote or third-party servers with no authentication block, no credential, and no note of what authenticates the connection. Servers whose tool list includes `bash`, `exec`, `shell`, `run_command`, or an equivalent, consumed without checking what that tool is permitted to run. A threat model, ADR, or security sign-off that records an MCP integration as reviewed once, with no re-check cadence and no pinning of what was reviewed. Servers added by a developer or auto-discovered from a registry with no approval step at all. *(Cross-reference: 1.7 owns whether an authorization flow that does exist binds tokens correctly; this finding is the prior step — whether there is one. 1.4 owns the integrity of the descriptions those servers ship. `tool-design.md` 1.5 owns unsandboxed execution in the system's *own* tools; this owns it arriving through someone else's server.)*
+
 ## Pass 2 — Important
 
 ### 2.1 No Injection-Resistant Architectural Pattern for External Content Processing
@@ -104,6 +116,16 @@ A human approval step is credited as the mitigation that makes an otherwise-unsa
 
 **What to look for:** Ask for the approval telemetry the system already has or could have: approvals versus denials by prompt type, denial rate over time, time-to-decision. Concrete red flags — a threat model or design doc that resolves a risk with "the user approves this" and no measured denial rate; `alwaysAllow` / auto-approve / remember-this-decision settings in the client or MCP configuration, which convert the gate into a single past decision; a prompt that fires on nearly every tool call (frequency trains dismissal) rather than on the rare consequential one; approval requested at the individual-action level only, with no plan-level review where the consequential shape of the work is actually visible; no fallback to a stricter mode when approvals stop discriminating (a block-streak or denial-rate trigger that escalates to manual or blocked is the concrete, checkable circuit breaker here). Where the telemetry does not exist, the absence *is* the finding: report the gate as unproven and re-score any finding that was suppressed on account of it.
 
+### 2.9 MCP Security Posture Evidenced Only by an Automated Scanner
+
+The system's assurance that its MCP dependencies are safe rests on an automated MCP security scanner's output, and that output is treated as ground truth in both directions: a flagged server is blocked, an unflagged server is cleared, and no one triages either result. This is a finding about the reliability of the instrument, and it is worth stating plainly because it applies to the tool an auditor would themselves reach for first.
+
+Ecosystem-scale measurement of the MCP server population found existing scanners reporting 96.89% of servers as "risky," while manual validation found fewer than half of the sampled alerts to be true positives, with substantial disagreement between different scanners on the same servers. Carry the qualification the measurement carries: the true-positive figure comes from manual validation of a *sample* of alerts rather than from every alert in the corpus, so read it as the direction and rough magnitude of the error rate, not a precise one. That is still enough to settle the practical question — a scanner's "risky" flag is not evidence of risk, and manual triage of flagged findings is currently required rather than optional.
+
+Note also what a near-universal flag rate means on its own terms: an alert that fires on almost every server carries almost no information about which server is actually dangerous. Ranking by it is close to ranking at random.
+
+**What to look for:** A CI gate or release check that passes or fails on a scanner's exit code with no triage record of which alerts were examined and dismissed, and why. A security review whose entire evidence for an MCP dependency is a scanner report. Reliance on a single scanner with no cross-check and no manual read of the flagged behavior. A risk register that inherits scanner severities verbatim as its own. Conversely, a server treated as cleared *because* the scanner was quiet — the same reliability problem read in the other direction. The fix is not a better scanner: it is a documented triage step between the scan and the decision, and an auditor applying the same discount to scanner output they would apply to any other unvalidated signal.
+
 ## Pass 3 — Minor
 
 ### 3.1 No Audit Trail for Consequential Agent Actions
@@ -130,8 +152,10 @@ Raw HTML, markdown, PDFs, or API responses are inserted into context without str
 - **1.2** — suppress for single-agent systems.
 - **1.4** — suppress if the system does not use MCP or any plugin/tool-discovery architecture where tool definitions are loaded dynamically.
 - **1.8** — suppress if the system does not use MCP or negotiate any extension capability beyond core tool/resource/prompt listing.
+- **1.9** — suppress if the system connects to no MCP server it does not itself build and deploy. A first-party server in the same repository is audited as ordinary code; this finding is about depending on someone else's.
 - **1.5** — suppress if the agent has no code execution surface, no file-write tools, and makes no outbound network connections from within the execution environment.
 - **2.3** — suppress if the agent has no persistent memory and no RAG retrieval pipeline.
+- **2.9** — suppress if no automated MCP security scanner is part of the system's review or CI process. Absence of a scanner is not this finding; over-trust of one is.
 - **2.8** — suppress if the system has no human approval gate at all; a missing approval boundary is `harness-architecture.md` 1.5, not this finding. Also suppress where approval telemetry exists and shows a non-trivial denial rate on the prompts that matter — that is the evidence this finding asks for.
 - **3.2** — suppress if the system prompt contains no sensitive information beyond the agent's role description and behavioral guidelines.
 
