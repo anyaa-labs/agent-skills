@@ -16,10 +16,10 @@ Model-directed code, shell commands, browser actions, or generated scripts run i
 Long-running work depends on conversation history alone. There is no workspace manifest, snapshot, serialized run state, artifact directory, or resume contract.
 
 ### 1.4 Consequential Artifacts Are Consumed Without Inspection
-Generated code, files, emails, database updates, browser actions, or external API payloads can flow to downstream systems without schema validation, tests, visual review, or human approval proportional to blast radius.
+Generated code, files, emails, database updates, browser actions, or external API payloads can flow to downstream systems without schema validation, tests, visual review, or human approval proportional to blast radius. Human approval is the weakest of those four and the only one whose efficacy has to be demonstrated rather than assumed (`security.md` 2.8).
 
 ### 1.5 No Approval Boundary for Irreversible Actions
-The harness lets the model perform irreversible or externally visible actions without a structural pause, policy check, or human approval step.
+The harness lets the model perform irreversible or externally visible actions without a structural pause, policy check, or human approval step. When the boundary that *is* present is a human approval prompt, it counts as a control only under the evidence test in `security.md` 2.8: without evidence that approvals discriminate, treat the system as having a structural pause but not a mitigation, and prefer a policy check or structural denial for the actions whose blast radius warrants one.
 
 ### 1.6 Tool Server Assumes Implicit Session Affinity Under a Stateless Protocol
 A tool-serving backend (an MCP server, or any component built against a session-oriented request model) keeps cross-call state implicitly — keyed by a connection, a transport-level session token, or a protocol session ID — instead of an explicit, caller-supplied handle. Under a stateless request model nothing guarantees the next call lands on the same process, replica, or connection: a load balancer, connection pool, restart, or replica failover can route it somewhere that never saw the earlier state. The failure is often not a loud error. The new process or a reused pooled connection can just as easily serve default/empty state as if it were the caller's own, or — with pooled connections — another caller's leftover state, so the agent gets a plausible-looking but wrong answer with no signal that context was lost or crossed a session boundary.

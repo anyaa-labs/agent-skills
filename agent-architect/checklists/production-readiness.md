@@ -24,7 +24,7 @@ When the LLM API fails (timeout, rate limit, server error), the user sees a raw 
 ### 1.4 Unvalidated LLM Output Persisted
 LLM-generated content (text, JSON, code, URLs, emails) is written directly to a database, sent in an email, or executed without validation. Hallucinated data becomes the source of truth.
 
-**What to look for:** Any path from LLM response to database write, email send, or code execution. Check for validation, format checking, or human review gates between generation and persistence.
+**What to look for:** Any path from LLM response to database write, email send, or code execution. Check for validation, format checking, or human review gates between generation and persistence. A human review gate closes this finding only under the evidence test in `security.md` 2.8 — a review that is granted as a matter of routine is consent, not validation, so prefer a deterministic check where one is expressible.
 
 ### 1.5 No Cost Controls
 No mechanism to detect or prevent runaway costs. No daily/weekly spend alerts. No per-invocation cost cap. A prompt regression that doubles token usage is invisible until the bill arrives.
@@ -61,6 +61,13 @@ Voice/realtime systems lack p50/p95 latency targets and monitoring for first aud
 
 ### 2.7 No Provider Deprecation or Alias Migration Gate
 Production model IDs can change or be deprecated without a stored eval baseline, rollout gate, or rollback path.
+
+### 2.8 Recovery or Escalation Triggered on Mid-Run Confidence
+The harness decides whether to intervene — restart, re-plan, escalate to a human, abandon the run — from an uncertainty signal read part-way through a trajectory: the agent's own verbal confidence, a perplexity score, a self-rated progress estimate. On deep-research-style tasks, verbal confidence separated eventual successes from failures well **at trajectory completion** but no evaluated signal did so around the mid-point; the proposed mechanism is path switching — agents routinely abandon a search direction mid-run, which breaks the link between an early signal and the eventual outcome. A trigger built on the mid-run reading then fires on noise: it restarts runs that would have recovered on their own and lets through runs that will not.
+
+**Scope — read before flagging.** This is a single-domain result (deep-research tasks; verbal confidence and perplexity as the signals tested), suggestive rather than established, and it is not a general law about every agent or every uncertainty signal. Treat it as a question the system must be able to answer, not as an automatic defect. On a task class where the team can show from its own traces that a mid-run signal predicts outcome, the trigger is fine and the finding does not apply. What is not fine is *assuming* it predicts.
+
+**What to look for:** A threshold on a confidence, uncertainty, self-assessment, or "am I making progress" field that is consumed by a restart, retry, model-fallback, escalation, or abort branch before the run completes — with no validation that the signal separates outcomes at that point in the trajectory. Ask directly: has anyone compared the signal's separation of success from failure at intermediate progress against its separation at completion, in this system's own logs? Where the signal has only been validated at completion, the decisions it can support are post-run ones (re-run, escalate a finished trajectory, gate the result) rather than a mid-run interrupt. Note the related design smell even where the trigger is validated: an intervention policy with no recorded false-restart rate is a cost line nobody is watching.
 
 ## Pass 3 — Minor
 

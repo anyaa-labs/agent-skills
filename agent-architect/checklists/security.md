@@ -10,7 +10,7 @@ Apply this checklist against any agent system. Security findings are architectur
 
 The agent simultaneously: (a) processes untrusted external content — web pages, emails, user-uploaded files, RAG documents, API responses; (b) has access to sensitive data or credentials; and (c) can take consequential external actions — send messages, write files, execute code, delete records, call external APIs. All three properties together, with no architectural containment layer between them.
 
-This is the Rule of Two (Meta AI, 2025): an agent should have at most two of these three properties without supervised human oversight. The combination of all three means a single successful injection grants the attacker access to sensitive data and the ability to act on it.
+This is the Rule of Two (Meta AI, 2025): an agent should have at most two of these three properties without supervised human oversight. The combination of all three means a single successful injection grants the attacker access to sensitive data and the ability to act on it. Note what "supervised human oversight" has to mean to relax the rule: supervision that demonstrably discriminates, per 2.8. A per-action approval prompt that is granted as a matter of routine does not restore the missing third constraint, and a system whose only answer to this finding is "a human approves each action" has not been shown to satisfy the Rule of Two.
 
 **What to look for:** Tool sets that include both an external-content-reading tool (fetch URL, read file, search email) and a consequential-write tool (send message, delete record, execute code, POST to external API), while the agent also receives credentials or has access to sensitive state. Agent running with live production API keys while also processing user-controlled inputs. No architectural separation between the "read untrusted content" phase and the "act with privileges" phase.
 
@@ -99,6 +99,11 @@ High-risk tool calls are not intercepted before execution for allow/warn/block/r
 ### 2.7 Visual or Audio Prompt Injection Surface Untested
 The system accepts images, screenshots, video, audio, or transcripts but has no adversarial modality test cases or containment pattern.
 
+### 2.8 Human Approval Gate Counted as a Control Without Evidence Approvals Discriminate
+A human approval step is credited as the mitigation that makes an otherwise-unsafe capability acceptable — the escape hatch on a Rule of Two violation (1.1), the containment layer in front of an irreversible or externally visible action, the reason a broad credential or an excessive tool set (2.2) is treated as survivable — with no measurement of what the approver actually does when the prompt appears. An approval gate is a control only if approvals are sometimes refused, for reasons connected to the risk. Vendor telemetry from a large real deployment of per-action approval prompts reports near-total approval of individual tool calls, and markedly more scrutiny applied to whole plans than to the individual actions inside them: people read plans and rubber-stamp actions. Approval fatigue is the base case in this design, not an edge case. Absent evidence of discrimination, the gate is a logging and consent mechanism, not a control, and must not be scored as mitigation for any other finding.
+
+**What to look for:** Ask for the approval telemetry the system already has or could have: approvals versus denials by prompt type, denial rate over time, time-to-decision. Concrete red flags — a threat model or design doc that resolves a risk with "the user approves this" and no measured denial rate; `alwaysAllow` / auto-approve / remember-this-decision settings in the client or MCP configuration, which convert the gate into a single past decision; a prompt that fires on nearly every tool call (frequency trains dismissal) rather than on the rare consequential one; approval requested at the individual-action level only, with no plan-level review where the consequential shape of the work is actually visible; no fallback to a stricter mode when approvals stop discriminating (a block-streak or denial-rate trigger that escalates to manual or blocked is the concrete, checkable circuit breaker here). Where the telemetry does not exist, the absence *is* the finding: report the gate as unproven and re-score any finding that was suppressed on account of it.
+
 ## Pass 3 — Minor
 
 ### 3.1 No Audit Trail for Consequential Agent Actions
@@ -127,6 +132,7 @@ Raw HTML, markdown, PDFs, or API responses are inserted into context without str
 - **1.8** — suppress if the system does not use MCP or negotiate any extension capability beyond core tool/resource/prompt listing.
 - **1.5** — suppress if the agent has no code execution surface, no file-write tools, and makes no outbound network connections from within the execution environment.
 - **2.3** — suppress if the agent has no persistent memory and no RAG retrieval pipeline.
+- **2.8** — suppress if the system has no human approval gate at all; a missing approval boundary is `harness-architecture.md` 1.5, not this finding. Also suppress where approval telemetry exists and shows a non-trivial denial rate on the prompts that matter — that is the evidence this finding asks for.
 - **3.2** — suppress if the system prompt contains no sensitive information beyond the agent's role description and behavioral guidelines.
 
 ## Confidence Calibration

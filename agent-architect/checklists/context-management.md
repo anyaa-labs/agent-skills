@@ -22,7 +22,7 @@ Retrieval-augmented generation returns top-K results without a minimum relevance
 **What to look for:** Vector search with only a `limit` parameter and no `min_score` or `threshold` parameter.
 
 ### 1.4 No Reset Strategy for Long Tasks
-Long-running agent sessions accumulate context indefinitely with no checkpoint or reset mechanism. After 50+ turns, the model's attention to early instructions degrades significantly.
+Long-running agent sessions accumulate context indefinitely with no checkpoint or reset mechanism. The finding here is the missing recovery point, not a claim about the mechanism of decay: a session with no checkpoint has nowhere to restart from when it does go wrong, whatever the cause. Before prescribing a reset or compaction *as the fix for observed long-run degradation*, apply 1.7 — the two mechanisms come apart, and for one of them shrinking context is the wrong direction.
 
 **What to look for:** Any mechanism for context resets — periodic summarization, checkpoint-and-restart, structured handoff artifacts, or conversation compaction.
 
@@ -35,6 +35,11 @@ System prompt is treated as monolithic — no static/dynamic split. Every call r
 Provider-required reasoning items, thinking blocks, encrypted reasoning content, or thought signatures are not carried forward even though the model/runtime requires them for multi-turn tool use.
 
 **What to look for:** Responses reasoning items not replayed with function-call outputs, Claude thinking blocks stripped from the conversation, Gemini thought signatures omitted, or provider tool-call IDs lost when reconstructing history manually.
+
+### 1.7 Long-Horizon Degradation Treated as a Context Problem Without Attribution
+The system gets worse over long runs and the response is a context intervention — shrink the window, compact harder, truncate history, summarize sooner — with no evidence that context length is what is degrading. Long-horizon decay has at least two separable mechanisms: decay driven by context length, and per-step decay that accumulates with the number of agent steps regardless of how much context is present. They are not the same failure and they do not have the same fix. The largest study of long-horizon agent degradation to date found that on a genuinely agentic tool-use loop, success tracked *step count* rather than context length, and that bounding the context window made the decay **steeper**, not shallower — the opposite of what a "lost in the middle" account predicts. Prescribing a context reduction for step-driven degradation is therefore not merely unhelpful; it is a measured regression.
+
+**What to look for:** Establish attribution before prescribing. The question to answer first is whether failure rate rises with the number of steps taken or with the amount of context carried — the system's own traces can separate them by holding one roughly fixed while varying the other. Signals that attribution was skipped: a compaction, truncation, or summarization threshold introduced in response to "the agent gets worse on long tasks," with no before/after measurement behind the threshold; a post-incident write-up naming "context rot" as the cause of a long-horizon failure without distinguishing it from per-step reliability; a plan to fix long-run drift that contains only context-shrinking levers. If the degradation is step-driven, the fixes that apply are step-level: decompose the workflow into shorter runs with checkpoints between them, raise or verify per-step reliability, add verification between steps, and project measured per-step reliability onto the production step count rather than trusting a shorter benchmark. Do not recommend reducing context for a system whose degradation has not been attributed to context length.
 
 ## Pass 2 — Important
 
