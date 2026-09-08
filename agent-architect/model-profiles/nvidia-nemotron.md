@@ -41,7 +41,7 @@ researched_date: 2026-09-08
 ### Context behavior
 
 - **The 1M figure is family marketing; 256K is the per-model runtime default.** The Super build page states 1,048,576 tokens and `developer.nvidia.com` markets 1M for the family, but the Ultra NIM day-0 guide says **natively 262,144 tokens (256K), extensible to 1M only via `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` plus an explicit `--max-model-len`**. The Nano card says 1M max with a **256K default in the HF config**; the Nano Omni card says 256K max. **Check the specific repo's config before designing against 1M.**
-- Long context comes from a **Mamba-2 hybrid backbone** with linear-time processing. **Serving caveat with teeth: the Mamba-2 SSM state cache requires float32 for all checkpoint precisions** — a quantized deployment that also quantizes the SSM cache is misconfigured.
+- Long context comes from a **Mamba-2 hybrid backbone** with linear-time processing. **Serving caveat with teeth: the Super advanced deployment guide states that the Mamba-2 SSM state cache requires float32 for all checkpoint precisions** — but NVIDIA's own NIM day-0 Ultra guide documents `--mamba-ssm-cache-dtype float16 --enable-mamba-cache-stochastic-rounding` specifically for NVFP4 checkpoints, and the Super guide's own throughput-optimized TensorRT-LLM Config B (also NVFP4) sets the same float16 dtype. Both are NVIDIA-owned pages; see the sourcing gap below before picking a dtype for an NVFP4 deployment.
 - `--kv-cache-dtype fp8` is a documented serving flag. **No prompt-caching product feature is documented** — cost control is a serving-configuration problem, not an API feature.
 - **NVIDIA names two agent failure modes itself** on the scaffolding page: **"goal drift"** (the agent loses alignment as context accumulates) and **"tool-call failures"** (malformed or hallucinated function calls breaking execution loops) — and positions the long window as the mitigation. Note that a long window is a mitigation for context *exhaustion*, not for goal drift; treat NVIDIA's framing as a vendor claim and keep the usual initializer/handoff discipline.
 - No family-wide max-output ceiling is documented: **Nano Omni gives 20,480 tokens in thinking mode and 1,024 in instruct mode**; Super examples use `max_tokens=16000`.
@@ -65,7 +65,7 @@ researched_date: 2026-09-08
 - **Tool calls silently failing to parse** because the server was started without `--tool-call-parser qwen3_coder` — or because an operator looked for a `nemotron` parser that does not exist.
 - **Reasoning traces leaking into `content`** because `--reasoning-parser nemotron_v3` was not set. No error; just thinking in the user-facing output.
 - **A 1M context assumed from the marketing page** when the deployed model natively serves 256K and needs `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1` plus an explicit `--max-model-len` to go further.
-- **The Mamba-2 SSM cache quantized along with the weights**, when it requires float32 at every checkpoint precision.
+- **The Mamba-2 SSM cache set to float16 on a non-NVFP4 checkpoint**, or set to float16 without the required stochastic rounding — the Super guide's general guidance and its latency-optimized Config A require float32 for all checkpoint precisions; float16 is only documented for NVFP4 (NIM day-0 Ultra guide, and the Super guide's own throughput-optimized Config B), and there with `--enable-mamba-cache-stochastic-rounding` attached.
 - **`trust_remote_code=True` enabled for Nano Omni without a security review** of the custom chat template it loads.
 - **A license assumption applied family-wide** across three different license names.
 - **A harness locked to `nvext`/`guided_json`** with no fallback, blocking any move to a provider without an equivalent grammar path.
@@ -77,7 +77,7 @@ researched_date: 2026-09-08
 ### Harness requirements
 
 - Start every self-hosted deployment with **`--enable-auto-tool-choice --tool-call-parser qwen3_coder`** and **`--reasoning-parser nemotron_v3`** (or the `super_v3` plugin where documented), and verify both with a smoke test that exercises a tool call and a thinking turn.
-- Keep the **Mamba-2 SSM state cache in float32** regardless of checkpoint precision.
+- Keep the **Mamba-2 SSM state cache in float32** for BF16/FP8 checkpoints, per the Super guide's general guidance and its latency-optimized Config A. For **NVFP4 checkpoints**, NVIDIA's NIM day-0 Ultra guide and the Super guide's own throughput-optimized Config B instead document `--mamba-ssm-cache-dtype float16 --enable-mamba-cache-stochastic-rounding` — the two NVIDIA pages disagree even within NVFP4 depending on which config you deploy, so verify against the specific profile/config table rather than assuming float32 unconditionally.
 - Read the deployed repo's config for the real `max_position_embeddings`; do not design against the family's 1M marketing figure without setting the flags that enable it.
 - Treat `trust_remote_code=True` (Nano Omni) as a reviewed security decision.
 - Prefer **`guided_json` / `guided_grammar`** over JSON mode when output shape matters, and keep a schema-validation fallback so the harness is not permanently bound to `nvext`.
@@ -138,4 +138,5 @@ researched_date: 2026-09-08
 - **Data residency for `integrate.api.nvidia.com` is not publicly documented as of 2026-09-08.**
 - **No deprecation policy exists for the Nemotron LLM line**, so profile age is the only staleness signal available.
 - Context figures conflict between NVIDIA-owned pages (1M on the family/build pages, 256K native in the NIM day-0 guide and HF configs). Both are NVIDIA-owned; check the deployed repo's config.
+- **The Mamba-2 SSM cache dtype conflicts between NVIDIA-owned pages for NVFP4 checkpoints.** The Super advanced deployment guide's general guidance and its latency-optimized Config A say `float32` for all checkpoint precisions; the NIM day-0 Ultra guide's "Additional Settings for NVFP4 Checkpoints" section and the Super guide's own throughput-optimized Config B instead say `float16` with `--enable-mamba-cache-stochastic-rounding`. Both are NVIDIA-owned; check which profile/config you are deploying before picking a dtype, rather than defaulting to float32 unconditionally.
 - Pages that returned an empty body and could not be read: the nightly Ultra-Base cookbook README, the `latest` NIM function-calling page, and the `latest` NIM structured-generation page (the pinned `1.13.0` URL is cited instead). The Ultra NVFP4 model card exceeded the fetch size limit.
