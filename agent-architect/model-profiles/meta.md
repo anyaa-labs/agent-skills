@@ -1,6 +1,7 @@
 ---
 family: meta
-tier: open-weight
+access: open-weight
+scope: global
 researched_date: 2026-09-08
 ---
 

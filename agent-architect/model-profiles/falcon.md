@@ -1,6 +1,7 @@
 ---
 family: falcon
-tier: regional
+access: open-weight
+scope: regional
 researched_date: 2026-09-08
 ---
 
